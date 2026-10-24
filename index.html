@@ -15,7 +15,7 @@
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);
   font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Meiryo",system-ui,sans-serif;
-  -webkit-text-size-adjust:100%;touch-action:manipulation}
+  -webkit-text-size-adjust:100%;touch-action:manipulation;overflow-x:clip}
 body{min-height:100vh;display:flex;flex-direction:column;
   background:radial-gradient(circle at 20% 0%,#2c1f5e 0,transparent 50%),radial-gradient(circle at 90% 100%,#3b1240 0,transparent 45%),var(--bg)}
 button{font:inherit;color:inherit;cursor:pointer}
@@ -105,9 +105,9 @@ footer{padding:12px 16px 20px;text-align:center;font-size:12px;color:var(--dim);
 @keyframes shakeS{0%{transform:translate(0,0)}25%{transform:translate(2px,-1px)}50%{transform:translate(-2px,1px)}75%{transform:translate(1px,2px)}100%{transform:translate(0,0)}}
 @keyframes shakeL{0%{transform:translate(0,0)}25%{transform:translate(4px,-3px)}50%{transform:translate(-4px,2px)}75%{transform:translate(3px,4px)}100%{transform:translate(0,0)}}
 #board{position:absolute;inset:0;width:100%;height:100%;touch-action:none;-webkit-user-select:none;user-select:none;cursor:pointer}
-#fx{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:3}
+#fx{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:3;overflow:hidden}
 #fx span{font-size:clamp(28px,8vw,56px);font-weight:900;letter-spacing:.04em;padding:6px 18px;border-radius:14px;
-  background:rgba(20,20,50,.82);-webkit-text-stroke:1px rgba(0,0,0,.4);animation:pop .25s ease-out;text-align:center;line-height:1.2}
+  background:rgba(20,20,50,.82);-webkit-text-stroke:1px rgba(0,0,0,.4);animation:pop .25s ease-out;text-align:center;line-height:1.2;max-width:94%}
 #fx span.reach{color:var(--yellow)} #fx span.int{color:var(--pink)} #fx span.burst{color:var(--orange)} #fx span.resv{color:var(--orange);font-size:clamp(18px,5vw,30px)}
 @keyframes pop{from{transform:scale(1.6);opacity:0}to{transform:scale(1);opacity:1}}
 #msg{min-height:22px;text-align:center;font-weight:700;color:var(--yellow);margin-top:8px;font-size:14px}
@@ -130,6 +130,8 @@ footer{padding:12px 16px 20px;text-align:center;font-size:12px;color:var(--dim);
 .renda[data-c="2"]{background:linear-gradient(180deg,#5fe6ff,#1fb6dc);color:#062430;box-shadow:0 6px 0 #0d6f87}
 .renda .key{font-size:12px;font-weight:700;opacity:.85;display:block}
 .renda .why{font-size:12px;font-weight:700;display:block;min-height:1.2em}
+.renda .why.close{font-size:17px;font-weight:900;color:var(--yellow);text-shadow:0 1px 0 #000}
+.renda[data-c="2"] .why.close{color:#7a0035;text-shadow:none}
 .renda.off{filter:grayscale(.85) brightness(.65)}
 .renda.hit{transform:translateY(4px);box-shadow:0 2px 0 #a3134f}
 .renda[data-c="2"].hit{box-shadow:0 2px 0 #0d6f87}
@@ -168,7 +170,9 @@ footer{padding:12px 16px 20px;text-align:center;font-size:12px;color:var(--dim);
   .pnl{padding:7px 9px;font-size:12px}
   .pname{font-size:14px;margin-bottom:4px}
   .gnum .gv{font-size:16px}
-  .kv{display:none}
+  #game>*{min-width:0}
+  .kv{display:flex;flex-wrap:wrap;gap:0 4px;font-size:11px;margin-top:2px}
+  .kv dd{margin-right:6px}
   #turnLbl{font-size:15px}
   .stats{gap:10px;font-size:12px}
   .stats b{font-size:15px}
@@ -382,8 +386,8 @@ const sfx = {
 
 // ===== ゲーム状態 =====
 let G = null, gidSeq = 0, screen = 'start';
-let sel = null, kcur = { r: 7, c: 7 }, hover = null;
-const fxRings = []; // 演出だけ（状態ではない）
+let sel = null, kcur = { r: 7, c: 7 }, hover = null, touchDrag = null;
+const fxRings = [], fxGhosts = []; // 演出だけ（状態ではない）
 
 function newGame() {
   G = {
@@ -397,7 +401,7 @@ function newGame() {
     cpuAcc: 0, cpuMoveT: 0, cpuIntT: 0, lastWarn: -1e9,
     winner: 0, winLine: [], reachSeen: new Set(), last: -1,
   };
-  sel = null; hover = null; kcur = { r: 7, c: 7 }; fxRings.length = 0;
+  sel = null; hover = null; kcur = { r: 7, c: 7 }; fxRings.length = 0; fxGhosts.length = 0;
 }
 const isHuman = c => !G.cpu || c === 1;
 const who = c => G.cpu ? (c === 1 ? 'あなた' : 'CPU') : COLOR_NAME[c];
@@ -528,7 +532,7 @@ function cpuStep(dt) {
   // 連打（黒の通常手番の間だけ。止まっていた分をまとめて打たない）
   if (canTap(2)) {
     const iv = 1000 / G.speed;
-    G.cpuAcc += dt;
+    G.cpuAcc += Math.min(dt, iv);
     if (G.cpuAcc >= iv) { G.cpuAcc = Math.min(G.cpuAcc - iv, iv); G.queue.push({ k: 'tap', c: 2, gid: G.gid }); }
   } else G.cpuAcc = 0;
   // 通常着手（白の手番開始から700ms）
@@ -536,7 +540,7 @@ function cpuStep(dt) {
     G.cpuMoveT += dt;
     if (G.cpuMoveT >= CPU_MOVE_MS) {
       G.cpuMoveT = -Infinity;
-      G.queue.push({ k: 'move', c: 2, idx: G.reserve[2] ? -1 : cpuChoose(2, false), rev: G.rev, gid: G.gid });
+      G.queue.push({ k: 'move', c: 2, idx: cpuChoose(2, false), rev: G.rev, gid: G.gid });
     }
   }
   // 割り込み配置（250ms後）
@@ -584,17 +588,18 @@ function startInterrupt(c) {
   G.mode = 'interrupt'; G.intBy = c; G.cpuIntT = 0; G.rev++;
   clearSel();
   sfx.interrupt();
-  showFx(who(c) === 'CPU' ? 'CPUの割り込み！' : who(c) + 'の割り込み！', 'int', 600);
+  const n = G.I[1] + G.I[2] + 1;
+  showFx(`${who(c)}の割り込み！<br><small style="font-size:.5em">本局${n}回目${n >= 3 ? '…まだ来る！' : ''}</small>`, 'int', 800);
   shake('sh-l', 600);
 }
 function normalMove(c, idx) {
-  if (G.reserve[c]) { place(c, burstPick(c), 'burst'); return true; }
+  if (G.reserve[c]) { place(c, burstPick(c), 'burst', idx); return true; }
   if (idx < 0) return false;
   if (G.board[idx]) { if (isHuman(c)) showMsg('そこには置けません'); return false; }
   return place(c, idx, 'normal');
 }
 // すべての着手が通る関数（途中で待たない）
-function place(c, idx, kind) {
+function place(c, idx, kind, intended = -1) {
   const b = G.board;
   if (b[idx]) return false;
   b[idx] = c;
@@ -621,7 +626,11 @@ function place(c, idx, kind) {
   if (kind === 'burst') {
     sfx.burst();
     fxRings.push({ idx, until: performance.now() + 600 });
-    showFx('暴発！', 'burst', 600);
+    if (intended >= 0 && intended !== idx && !b[intended]) {
+      fxGhosts.length = 0;
+      fxGhosts.push({ from: intended, to: idx, until: performance.now() + 1400 });
+      showFx('暴発！<br><small style="font-size:.5em">そこじゃない！</small>', 'burst', 900);
+    } else showFx('暴発！', 'burst', 600);
     showMsg('暴発：つながりにくい場所へランダム配置');
   } else sfx.place();
   if (reach) {
@@ -684,6 +693,7 @@ function showResult() {
       <dt>割り込み</dt><dd>${d.I}回</dd><dt>相手に起こした暴発</dt><dd>${d.B}回</dd><dt>置いた石</dt><dd>${d.N}個</dd></dl></div>`;
   }).join('');
   els.resultOv.hidden = false;
+  syncInert();
   els.rematchBtn.focus();
 }
 
@@ -719,6 +729,8 @@ function startGame() {
   screen = 'game';
   els.start.hidden = true; els.game.hidden = false;
   els.resultOv.hidden = true; els.pauseOv.hidden = true; els.confirmOv.hidden = true;
+  syncInert();
+  touchDrag = null;
   els.game.classList.toggle('cpu', G.cpu);
   els.diffLbl.textContent = G.cpu ? 'CPU：' + DIFF_LABEL[S.diff] : '2人対戦';
   els.bp.q.who.textContent = G.cpu ? '黒（あなた）' : '黒';
@@ -736,20 +748,42 @@ function toTitle() {
   screen = 'start'; G = null;
   els.game.hidden = true; els.start.hidden = false;
   els.resultOv.hidden = true; els.pauseOv.hidden = true; els.confirmOv.hidden = true;
+  syncInert();
   syncStartForm();
+}
+// パネルを出している間は、裏の対局画面を操作できなくする
+function syncInert() {
+  els.game.inert = !els.pauseOv.hidden || !els.confirmOv.hidden || !els.resultOv.hidden;
+}
+// 止めるとき：まだ処理していない入力と、触っている途中の操作を捨てる
+function haltInputs() {
+  G.queue = []; G.rev++;
+  G.cpuMoveT = 0; G.cpuIntT = 0;
+  touchDrag = null; clearSel();
 }
 function setPaused(v) {
   if (!G || G.mode === 'over') return;
+  if (v && !G.paused) haltInputs();
   G.paused = v;
   els.pauseOv.hidden = !v;
+  syncInert();
   if (v) els.resumeBtn.focus(); else els.board.focus({ preventScroll: true });
 }
 function askRestart() {
   if (!G) return;
   if (G.mode === 'over') { startGame(); return; }
+  G.prePaused = G.paused;
+  if (!G.paused) haltInputs();
   G.paused = true;
   els.confirmOv.hidden = false;
+  syncInert();
   els.confirmNo.focus();
+}
+function closeConfirm() {
+  els.confirmOv.hidden = true;
+  if (G) G.paused = !!G.prePaused;
+  syncInert();
+  if (G && G.paused) els.resumeBtn.focus(); else els.board.focus({ preventScroll: true });
 }
 
 // ===== 演出 =====
@@ -852,6 +886,20 @@ function render(now) {
     ctx.strokeStyle = `rgba(255,138,0,${1 - p * 0.6})`; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(pad + (f.idx % N) * cell, pad + ((f.idx / N) | 0) * cell, rad + 2 + p * cell * 0.5, 0, Math.PI * 2); ctx.stroke();
   }
+  for (let k = fxGhosts.length - 1; k >= 0; k--) {
+    const f = fxGhosts[k];
+    if (f.until <= now) { fxGhosts.splice(k, 1); continue; }
+    const fx = pad + (f.from % N) * cell, fy = pad + ((f.from / N) | 0) * cell;
+    const tx = pad + (f.to % N) * cell, ty = pad + ((f.to / N) | 0) * cell;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,138,0,.95)'; ctx.lineWidth = 2; ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.arc(fx, fy, rad, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(tx, ty); ctx.stroke();
+    ctx.setLineDash([]); ctx.lineWidth = 3;
+    const k2 = rad * 0.55;
+    ctx.beginPath(); ctx.moveTo(fx - k2, fy - k2); ctx.lineTo(fx + k2, fy + k2); ctx.moveTo(fx + k2, fy - k2); ctx.lineTo(fx - k2, fy + k2); ctx.stroke();
+    ctx.restore();
+  }
   const actor = humanActor(), pp = previewPoint();
   if (actor && pp) {
     const x = pad + pp.c * cell, y = pad + pp.r * cell;
@@ -939,8 +987,11 @@ function updateUI(now) {
     else if (G.mode === 'interrupt') why = '割り込み配置中';
     else if (G.turn === c) why = '自分の番は連打できない';
     else if (G.t < G.cool[c]) why = `休止中 ${((G.cool[c] - G.t) / 1000).toFixed(1)}秒`;
+    else if (G.gauge[c] >= WARN_AT) why = `割り込みまで あと${FULL - G.gauge[c]}！`;
+    else if (!G.armed[c] && G.gauge[c] >= HALF - 4) why = `暴発まで あと${HALF - G.gauge[c]}！`;
     else why = G.cpu && c === 2 ? '連打中！' : 'いまだ！ 連打！';
     setText(btn.q.why, why);
+    btn.q.why.classList.toggle('close', /あと/.test(why));
     btn.classList.toggle('off', !canTap(c));
   }
   // 確定ボタン
@@ -960,7 +1011,7 @@ function updateUI(now) {
 // ===== メインループ =====
 let prevT = performance.now();
 function frame(now) {
-  const dt = Math.min(100, Math.max(0, now - prevT));
+  const dt = Math.max(0, now - prevT);
   prevT = now;
   try {
     if (screen === 'game' && G && !G.paused && G.mode !== 'over') step(dt);
@@ -972,18 +1023,20 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // ===== 入力イベント =====
-let touchDrag = null;
+const dragAlive = e => touchDrag && touchDrag.id === e.pointerId && G && touchDrag.gid === G.gid && touchDrag.rev === G.rev;
 els.board.addEventListener('pointerdown', e => {
-  if (e.pointerType === 'mouse') { if (e.button !== 0) return; return; }
+  if (e.pointerType === 'mouse') return;
   e.preventDefault();
-  touchDrag = e.pointerId;
+  if (!G) return;
+  touchDrag = { id: e.pointerId, gid: G.gid, rev: G.rev };
   try { els.board.setPointerCapture(e.pointerId); } catch (_) { /* 無視 */ }
   const p = pointFromEvent(e);
   if (p) sel = p;
 });
 els.board.addEventListener('pointermove', e => {
   if (e.pointerType === 'mouse') { hover = pointFromEvent(e); return; }
-  if (touchDrag !== e.pointerId) return;
+  if (!touchDrag || touchDrag.id !== e.pointerId) return;
+  if (!dragAlive(e)) { touchDrag = null; return; } // 途中で割り込み・手番変更・停止があったら取り消し
   const p = pointFromEvent(e);
   if (p) sel = p;
 });
@@ -994,9 +1047,14 @@ els.board.addEventListener('pointerup', e => {
     if (p) { sel = p; requestPlace(p); }
     return;
   }
-  if (touchDrag !== e.pointerId) return;
+  if (!touchDrag || touchDrag.id !== e.pointerId) return;
+  const alive = dragAlive(e);
   touchDrag = null;
-  if (S.touch === 'direct' && sel) requestPlace(sel);
+  if (!alive) return;
+  const p = pointFromEvent(e);
+  if (!p) return; // 盤の外で離したら確定しない
+  sel = p;
+  if (S.touch === 'direct') requestPlace(p);
 });
 els.board.addEventListener('pointercancel', () => { touchDrag = null; });
 els.board.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hover = null; });
@@ -1006,7 +1064,13 @@ els.placeBtn.addEventListener('click', () => requestPlace(sel));
 for (const btn of [els.bb, els.wb]) {
   const c = +btn.dataset.c;
   btn.addEventListener('pointerdown', e => { e.preventDefault(); humanTap(c); });
-  btn.addEventListener('click', e => { if (e.detail === 0) humanTap(c); }); // キーボードで押したときだけ
+  // キーボード（Enter／Space）は自前で1回だけ数え、ブラウザ標準のclickは使わない
+  btn.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault(); e.stopPropagation();
+    if (!e.repeat) humanTap(c);
+  });
+  btn.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') e.preventDefault(); });
   btn.addEventListener('contextmenu', e => e.preventDefault());
 }
 
@@ -1014,7 +1078,7 @@ document.addEventListener('keydown', e => {
   if (screen !== 'game' || !G) return;
   if (e.code === 'Escape') {
     e.preventDefault();
-    if (!els.confirmOv.hidden) { els.confirmOv.hidden = true; G.paused = false; return; }
+    if (!els.confirmOv.hidden) { closeConfirm(); return; }
     if (G.mode !== 'over' && els.resultOv.hidden) setPaused(!G.paused);
     return;
   }
@@ -1049,9 +1113,9 @@ els.pauseBtn.addEventListener('click', () => setPaused(true));
 els.resumeBtn.addEventListener('click', () => setPaused(false));
 els.againBtn.addEventListener('click', askRestart);
 els.confirmYes.addEventListener('click', startGame);
-els.confirmNo.addEventListener('click', () => { els.confirmOv.hidden = true; if (G) G.paused = false; });
+els.confirmNo.addEventListener('click', closeConfirm);
 els.rematchBtn.addEventListener('click', startGame);
-els.titleBtn.addEventListener('click', () => { if (G && G.mode !== 'over') { G.paused = true; els.pauseOv.hidden = false; els.pTitleBtn.focus(); } else toTitle(); });
+els.titleBtn.addEventListener('click', () => { if (G && G.mode !== 'over') { setPaused(true); els.pTitleBtn.focus(); } else toTitle(); });
 els.pTitleBtn.addEventListener('click', toTitle);
 els.rTitleBtn.addEventListener('click', toTitle);
 els.startBtn.addEventListener('click', startGame);
