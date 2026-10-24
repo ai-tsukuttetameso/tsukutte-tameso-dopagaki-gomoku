@@ -1,0 +1,1088 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ドパガキ五目 ～待てない五目並べ～</title>
+<meta name="description" content="相手の番に連打して、暴発させたり割り込んだりする五目並べ。ChatGPT×Claude 共同制作。">
+<style>
+:root{
+  --bg:#141432; --bg2:#1e1e4a; --card:#26265a; --ink:#f4f2ff; --dim:#b3b0d8;
+  --pink:#ff3d8b; --yellow:#ffd23d; --cyan:#3de0ff; --orange:#ff8a00; --red:#ff3b3b;
+  --wood:#e3b866; --wood2:#d4a24c; --line:#5a3d17;
+  --blackc:#2b2b2b; --whitec:#f5f5f5;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  -webkit-text-size-adjust:100%;touch-action:manipulation}
+body{min-height:100vh;display:flex;flex-direction:column;
+  background:radial-gradient(circle at 20% 0%,#2c1f5e 0,transparent 50%),radial-gradient(circle at 90% 100%,#3b1240 0,transparent 45%),var(--bg)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:disabled{cursor:not-allowed}
+:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+
+/* ヘッダー */
+.hd{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:10px 16px;max-width:1180px;width:100%;margin:0 auto}
+.hd h1{margin:0;font-size:clamp(24px,5vw,36px);letter-spacing:.04em;line-height:1.1;
+  background:linear-gradient(90deg,var(--yellow),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 0 rgba(0,0,0,.35))}
+.hd .sub{margin:2px 0 0;font-size:14px;color:var(--dim);font-weight:700}
+.credit{font-size:13px;font-weight:700;padding:6px 12px;border-radius:999px;
+  background:linear-gradient(90deg,rgba(61,224,255,.18),rgba(255,61,139,.18));border:1px solid rgba(255,255,255,.18)}
+main{flex:1;width:100%;max-width:1180px;margin:0 auto;padding:0 16px 12px}
+footer{padding:12px 16px 20px;text-align:center;font-size:12px;color:var(--dim);line-height:1.6}
+
+/* スタート画面 */
+.start{max-width:720px;margin:8px auto 0;background:var(--card);border-radius:18px;padding:18px;
+  box-shadow:0 10px 30px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.08)}
+.start h2{font-size:15px;margin:0 0 8px;color:var(--yellow)}
+.opt{margin-bottom:16px}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg label{flex:1 1 140px;position:relative}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:block;text-align:center;padding:12px 8px;border-radius:12px;background:var(--bg2);
+  border:2px solid transparent;font-weight:700;cursor:pointer;line-height:1.35}
+.seg small{display:block;font-weight:400;color:var(--dim);font-size:12px}
+.seg input:checked+span{border-color:var(--pink);background:#3a1f55;box-shadow:0 0 0 3px rgba(255,61,139,.2)}
+.seg input:focus-visible+span{outline:3px solid var(--cyan);outline-offset:2px}
+.big{display:block;width:100%;padding:16px;border:0;border-radius:14px;font-size:22px;font-weight:900;letter-spacing:.06em;
+  background:linear-gradient(90deg,var(--pink),#ff7a3d);color:#fff;box-shadow:0 6px 0 #a3134f}
+.big:active{transform:translateY(3px);box-shadow:0 3px 0 #a3134f}
+.rules{margin:16px 0 0;padding:12px 14px;background:var(--bg2);border-radius:12px;font-size:14px;line-height:1.7}
+.rules ol{margin:0;padding-left:1.4em}
+.rules b{color:var(--yellow)}
+.settings{margin-top:12px;font-size:14px}
+.settings summary{cursor:pointer;color:var(--dim);font-weight:700}
+.settings .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.settings label{display:inline-flex;gap:6px;align-items:center}
+
+/* 対局画面 */
+#game{display:grid;gap:10px 14px;grid-template-columns:minmax(150px,1fr) minmax(0,600px) minmax(150px,1fr);
+  grid-template-areas:"top top top" "bp board wp" "bb conf wb" "ctrl ctrl ctrl";align-items:start}
+#game[hidden]{display:none}
+.top{grid-area:top;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;
+  background:var(--card);border-radius:14px;padding:8px 14px}
+#turnLbl{font-weight:900;font-size:18px;display:flex;align-items:center;gap:8px}
+#turnLbl.int{color:var(--pink)}
+.stats{display:flex;gap:14px;font-variant-numeric:tabular-nums;font-weight:700;color:var(--dim);font-size:14px}
+.stats b{color:var(--ink);font-size:17px}
+.dot{display:inline-block;width:18px;height:18px;border-radius:50%;flex:none;border:1px solid #777}
+.dot.c1{background:radial-gradient(circle at 35% 30%,#666,#111)}
+.dot.c2{background:radial-gradient(circle at 35% 30%,#fff,#cfcfcf)}
+
+.pnl{background:var(--card);border-radius:14px;padding:10px 12px;border:2px solid transparent;font-size:14px}
+#bp{grid-area:bp} #wp{grid-area:wp}
+.pnl.turn{border-color:var(--cyan)}
+.pname{display:flex;align-items:center;gap:8px;font-weight:900;font-size:16px;margin-bottom:6px}
+.gauge{position:relative;height:18px;border-radius:9px;background:#0d0d24;overflow:hidden;border:1px solid rgba(255,255,255,.15)}
+.gauge .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,var(--cyan),#7d8bff);transition:width .08s}
+.gauge .tk{position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,.7)}
+.gauge .tk.h{left:calc(50% - 1px)} .gauge .tk.f{right:0}
+.g-warn .fill{background:linear-gradient(90deg,var(--yellow),var(--orange))}
+.g-danger .fill{background:linear-gradient(90deg,var(--orange),var(--red))}
+.g-full .fill{background:linear-gradient(90deg,var(--red),var(--pink));animation:pulse .3s infinite alternate}
+@keyframes pulse{to{filter:brightness(1.5)}}
+.gnum{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:5px 0;font-variant-numeric:tabular-nums}
+.gnum .gv{font-size:20px;font-weight:900}
+.tag{font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;display:none}
+.tag.on{display:inline-block}
+.tag.resv{background:var(--orange);color:#1a0d00}
+.tag.cool{background:#454580}
+.kv{display:grid;grid-template-columns:auto auto;gap:2px 10px;margin:4px 0 0;color:var(--dim);font-variant-numeric:tabular-nums}
+.kv dd{margin:0;text-align:right;color:var(--ink);font-weight:700}
+
+.boardArea{grid-area:board;min-width:0}
+#resvBanner{min-height:0;margin-bottom:6px}
+#resvBanner div{background:var(--orange);color:#1a0d00;font-weight:900;border-radius:10px;padding:6px 10px;font-size:14px;margin-bottom:4px;text-align:center}
+.bwrap{position:relative;width:100%;max-width:600px;margin:0 auto;aspect-ratio:1/1}
+.bframe{position:absolute;inset:0;border-radius:10px;background:linear-gradient(135deg,var(--wood),var(--wood2));
+  box-shadow:0 0 0 5px #8a5a22,0 10px 24px rgba(0,0,0,.5)}
+.bframe.sh-s{animation:shakeS .12s infinite}
+.bframe.sh-l{animation:shakeL .08s infinite}
+@keyframes shakeS{0%{transform:translate(0,0)}25%{transform:translate(2px,-1px)}50%{transform:translate(-2px,1px)}75%{transform:translate(1px,2px)}100%{transform:translate(0,0)}}
+@keyframes shakeL{0%{transform:translate(0,0)}25%{transform:translate(4px,-3px)}50%{transform:translate(-4px,2px)}75%{transform:translate(3px,4px)}100%{transform:translate(0,0)}}
+#board{position:absolute;inset:0;width:100%;height:100%;touch-action:none;-webkit-user-select:none;user-select:none;cursor:pointer}
+#fx{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:3}
+#fx span{font-size:clamp(28px,8vw,56px);font-weight:900;letter-spacing:.04em;padding:6px 18px;border-radius:14px;
+  background:rgba(20,20,50,.82);-webkit-text-stroke:1px rgba(0,0,0,.4);animation:pop .25s ease-out;text-align:center;line-height:1.2}
+#fx span.reach{color:var(--yellow)} #fx span.int{color:var(--pink)} #fx span.burst{color:var(--orange)} #fx span.resv{color:var(--orange);font-size:clamp(18px,5vw,30px)}
+@keyframes pop{from{transform:scale(1.6);opacity:0}to{transform:scale(1);opacity:1}}
+#msg{min-height:22px;text-align:center;font-weight:700;color:var(--yellow);margin-top:8px;font-size:14px}
+#flash{position:fixed;inset:0;background:#fff6a8;opacity:0;pointer-events:none;z-index:50;transition:opacity .15s}
+#flash.on{opacity:.35;transition:none}
+
+#conf{grid-area:conf;display:flex;gap:12px;align-items:center;justify-content:center;background:var(--card);border-radius:14px;padding:8px 12px}
+#zoom{width:96px;height:96px;border-radius:8px;flex:none;background:var(--wood)}
+#conf .cbox{display:flex;flex-direction:column;gap:6px;flex:1;max-width:320px}
+#selLbl{font-weight:700;font-size:14px;color:var(--dim)}
+#placeBtn{min-height:48px;border:0;border-radius:12px;font-size:18px;font-weight:900;background:var(--cyan);color:#062430}
+#placeBtn:disabled{background:#3a3a6a;color:#8a88b8}
+#placeBtn.rand{background:var(--orange);color:#1a0d00}
+#placeBtn.int{background:var(--pink);color:#fff}
+
+.renda{position:relative;min-height:64px;min-width:120px;border:0;border-radius:16px;font-size:22px;font-weight:900;
+  touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  background:linear-gradient(180deg,#ff5fa0,var(--pink));color:#fff;box-shadow:0 6px 0 #a3134f;padding:8px;line-height:1.15}
+#bb{grid-area:bb} #wb{grid-area:wb}
+.renda[data-c="2"]{background:linear-gradient(180deg,#5fe6ff,#1fb6dc);color:#062430;box-shadow:0 6px 0 #0d6f87}
+.renda .key{font-size:12px;font-weight:700;opacity:.85;display:block}
+.renda .why{font-size:12px;font-weight:700;display:block;min-height:1.2em}
+.renda.off{filter:grayscale(.85) brightness(.65)}
+.renda.hit{transform:translateY(4px);box-shadow:0 2px 0 #a3134f}
+.renda[data-c="2"].hit{box-shadow:0 2px 0 #0d6f87}
+.renda.cpu{cursor:default}
+
+.ctrl{grid-area:ctrl;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.ctrl button,.sbtn{border:1px solid rgba(255,255,255,.2);background:var(--bg2);border-radius:10px;padding:10px 14px;font-weight:700;font-size:14px}
+
+/* オーバーレイ */
+.ov{position:fixed;inset:0;background:rgba(8,8,24,.72);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
+.ov[hidden]{display:none}
+.ovc{background:var(--card);border-radius:18px;padding:20px;max-width:640px;width:100%;max-height:92vh;overflow:auto;text-align:center;
+  border:1px solid rgba(255,255,255,.12);box-shadow:0 14px 40px rgba(0,0,0,.5)}
+.ovc h2{margin:0 0 10px;font-size:26px}
+.ovc .btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.ovc .btns button{min-height:48px;padding:10px 18px;border-radius:12px;font-weight:900;font-size:16px;border:0;background:var(--bg2)}
+.ovc .btns .pri{background:linear-gradient(90deg,var(--pink),#ff7a3d);color:#fff}
+.res-sum{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;color:var(--dim);font-weight:700;margin-bottom:10px}
+.res-sum b{color:var(--ink)}
+.diag{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left}
+.diag .dc{background:var(--bg2);border-radius:14px;padding:12px}
+.diag .dh{display:flex;align-items:center;gap:6px;font-weight:900}
+.diag .pct{font-size:40px;font-weight:900;color:var(--yellow);line-height:1.1;margin:4px 0}
+.diag .pct small{font-size:14px;color:var(--dim);font-weight:700}
+.diag .ttl2{font-weight:900;color:var(--pink);font-size:18px}
+.diag .one{font-size:13px;color:var(--dim);margin-bottom:6px}
+.diag dl{display:grid;grid-template-columns:1fr auto;gap:1px 8px;font-size:12px;margin:0;color:var(--dim)}
+.diag dd{margin:0;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums}
+.note{font-size:11px;color:var(--dim);margin-top:10px;line-height:1.6}
+
+/* スマホ */
+@media (max-width:820px){
+  #game{grid-template-columns:1fr 1fr;gap:8px;
+    grid-template-areas:"top top" "bp wp" "board board" "conf conf" "bb wb" "ctrl ctrl"}
+  .pnl{padding:7px 9px;font-size:12px}
+  .pname{font-size:14px;margin-bottom:4px}
+  .gnum .gv{font-size:16px}
+  .kv{display:none}
+  #turnLbl{font-size:15px}
+  .stats{gap:10px;font-size:12px}
+  .stats b{font-size:15px}
+  #game.cpu #wb{display:none}
+  #game.cpu #bb{grid-column:1 / -1}
+  .renda{min-height:72px}
+  .diag{grid-template-columns:1fr}
+  .hd{padding:8px 16px}
+}
+@media (prefers-reduced-motion:reduce){
+  .bframe.sh-s,.bframe.sh-l,.g-full .fill{animation:none}
+  #fx span{animation:none}
+}
+.reduced .bframe.sh-s,.reduced .bframe.sh-l,.reduced .g-full .fill,.reduced #fx span{animation:none}
+</style>
+</head>
+<body>
+<header class="hd">
+  <div>
+    <h1>ドパガキ五目</h1>
+    <p class="sub">～待てない五目並べ～</p>
+  </div>
+  <div class="credit">ChatGPT×Claude 共同制作</div>
+</header>
+
+<main>
+  <!-- スタート画面 -->
+  <section id="start" class="start">
+    <div class="opt">
+      <h2>モード</h2>
+      <div class="seg" role="radiogroup" aria-label="モード">
+        <label><input type="radio" name="mode" value="cpu"><span>CPU対戦<small>あなた＝黒（先手）</small></span></label>
+        <label><input type="radio" name="mode" value="pvp"><span>2人対戦<small>1台で。黒はAキー、白はLキーで連打</small></span></label>
+      </div>
+    </div>
+    <div class="opt" id="diffBox">
+      <h2>CPUの強さ＝連打の速さ</h2>
+      <div class="seg" role="radiogroup" aria-label="CPUの強さ">
+        <label><input type="radio" name="diff" value="slow"><span>のんびり<small>2回／秒</small></span></label>
+        <label><input type="radio" name="diff" value="normal"><span>ふつう<small>5回／秒</small></span></label>
+        <label><input type="radio" name="diff" value="fast"><span>脊髄反射<small>10回／秒</small></span></label>
+      </div>
+    </div>
+    <button id="startBtn" class="big">対局開始！</button>
+    <div class="rules">
+      <ol>
+        <li>縦・横・斜めに<b>5個以上</b>並べたら勝ち（禁じ手なし）。</li>
+        <li>交互に打つ。でも<b>相手の番の間は連打できる！</b></li>
+        <li>連打<b>10回</b>で<b>暴発</b>：相手の次の石が、つながりにくい場所へランダムに置かれる。</li>
+        <li>連打<b>20回</b>で<b>割り込み</b>：相手の番なのに、好きな場所に自分の石を1個置ける。</li>
+        <li>割り込んだ後は<b>3秒休止</b>。ゲージは自分の番をまたいで持ち越し。</li>
+        <li>4つ並んだら「<b>リーチ！</b>」。対局後に<b>ドパガキ度</b>を診断。</li>
+      </ol>
+    </div>
+    <details class="settings">
+      <summary>設定（音・演出・スマホの置き方）</summary>
+      <div class="row"><label><input type="checkbox" id="optMute"> 音を消す</label>
+        <label><input type="checkbox" id="optReduced"> 演出を控えめにする（揺れ・発光なし）</label></div>
+      <div class="row">スマホの置き方：
+        <label><input type="radio" name="touch" value="confirm"> 選んでから「ここに置く」で確定</label>
+        <label><input type="radio" name="touch" value="direct"> タップしたら即置く</label></div>
+    </details>
+  </section>
+
+  <!-- 対局画面 -->
+  <section id="game" hidden>
+    <div class="top">
+      <div id="turnLbl"></div>
+      <div class="stats">
+        <span>時間 <b id="time">00:00</b></span>
+        <span>手数 <b id="moves">0</b>/225</span>
+        <span id="diffLbl"></span>
+      </div>
+    </div>
+    <div class="pnl" id="bp"></div>
+    <div class="boardArea">
+      <div id="resvBanner" aria-live="polite"></div>
+      <div class="bwrap">
+        <div class="bframe" id="bframe"></div>
+        <canvas id="board" aria-label="15×15の盤面。矢印キーで移動、EnterかSpaceで置く"></canvas>
+        <div id="fx" aria-live="assertive"></div>
+      </div>
+      <div id="msg" aria-live="polite"></div>
+    </div>
+    <div class="pnl" id="wp"></div>
+    <div id="conf">
+      <canvas id="zoom" width="96" height="96" aria-hidden="true"></canvas>
+      <div class="cbox">
+        <div id="selLbl">盤面をタップして場所を選ぶ</div>
+        <button id="placeBtn" disabled>ここに置く</button>
+      </div>
+    </div>
+    <button class="renda" id="bb" data-c="1"></button>
+    <button class="renda" id="wb" data-c="2"></button>
+    <div class="ctrl">
+      <button id="pauseBtn">一時停止（Esc）</button>
+      <button id="againBtn">最初からやり直す</button>
+      <button id="muteBtn">音：ON（M）</button>
+      <button id="titleBtn">タイトルへ</button>
+    </div>
+  </section>
+</main>
+
+<footer>
+  ChatGPT×Claude 共同制作 ／ 本作品・本動画は学習・検証目的の非公式作品です。既存作品およびその制作者とは関係ありません。
+</footer>
+
+<div id="flash"></div>
+
+<div class="ov" id="pauseOv" hidden>
+  <div class="ovc">
+    <h2>一時停止中</h2>
+    <p>時間・連打・CPUは止まっています。</p>
+    <div class="btns"><button class="pri" id="resumeBtn">再開</button><button id="pTitleBtn">タイトルへ</button></div>
+  </div>
+</div>
+
+<div class="ov" id="confirmOv" hidden>
+  <div class="ovc">
+    <h2 id="confirmTtl">最初からやり直しますか？</h2>
+    <p>いまの対局は記録されません。</p>
+    <div class="btns"><button class="pri" id="confirmYes">やり直す</button><button id="confirmNo">続ける</button></div>
+  </div>
+</div>
+
+<div class="ov" id="resultOv" hidden>
+  <div class="ovc">
+    <h2 id="resTtl"></h2>
+    <div class="res-sum" id="resSum"></div>
+    <div class="diag" id="resDiag"></div>
+    <p class="note">ドパガキ度は「連打の密度・累計回数・割り込み比率・暴発実績」から算出。ゲーム内の遊びの指標であり、性格や医療上の診断ではありません。</p>
+    <div class="btns"><button class="pri" id="rematchBtn">同じ設定でもう一戦</button><button id="rTitleBtn">タイトルへ</button></div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+// ===== 定数 =====
+const N = 15, HALF = 10, FULL = 20;
+const TAP_MS = 100, COOL_MS = 3000, CPU_MOVE_MS = 700, CPU_INT_MS = 250, WARN_AT = 16;
+const SPEED = { slow: 2, normal: 5, fast: 10 };
+const DIFF_LABEL = { slow: 'のんびり', normal: 'ふつう', fast: '脊髄反射' };
+const DIRS = [[0, 1], [1, 0], [1, 1], [-1, 1]];
+const COLOR_NAME = ['', '黒', '白'];
+const IDLE_SEQ = [[7, 5], [7, 6], [7, 7], [7, 8], [7, 9]]; // 行8の列6〜10
+const TITLES = [
+  [20, '静かな一手', '待つ時間も、盤面のうち。'],
+  [40, '指先そわそわ', '相手の番にも参加したい。'],
+  [60, '連打の芽吹き', '指先から勝負が動き出す。'],
+  [80, '割り込み職人', '手番のすき間に道を作る。'],
+  [101, '待機時間ブレイカー', '待っている間が、攻め時だ。'],
+];
+
+const $ = s => document.querySelector(s);
+const opp = c => 3 - c;
+const idxOf = (r, c) => r * N + c;
+const inB = (r, c) => r >= 0 && r < N && c >= 0 && c < N;
+const clamp01 = v => Math.max(0, Math.min(1, v));
+
+// ===== 設定 =====
+const S = { mode: 'cpu', diff: 'normal', touch: 'confirm', mute: false, reduced: false };
+try { Object.assign(S, JSON.parse(localStorage.getItem('dopagaki-gomoku') || '{}')); } catch (e) { /* 保存なしでも動く */ }
+const saveSettings = () => { try { localStorage.setItem('dopagaki-gomoku', JSON.stringify(S)); } catch (e) { /* 無視 */ } };
+const mqReduce = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+const reduced = () => S.reduced || mqReduce.matches;
+
+// ===== 音（Web Audio） =====
+const SND = { ctx: null, master: null, voices: 0 };
+function audioInit() {
+  try {
+    if (!SND.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      SND.ctx = new AC();
+      SND.master = SND.ctx.createGain();
+      SND.master.gain.value = 0.2;
+      SND.master.connect(SND.ctx.destination);
+    }
+    if (SND.ctx.state === 'suspended') SND.ctx.resume();
+  } catch (e) { SND.ctx = null; }
+}
+function tone(type, f1, f2, ms, delay = 0) {
+  try {
+    const c = SND.ctx;
+    if (!c || S.mute || SND.voices >= 4) return;
+    const t0 = c.currentTime + delay / 1000, t1 = t0 + ms / 1000;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f1, t0);
+    if (f2 !== f1) o.frequency.linearRampToValueAtTime(f2, t1);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(1, t0 + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t1);
+    o.connect(g).connect(SND.master);
+    o.start(t0); o.stop(t1 + 0.02);
+    SND.voices++;
+    o.onended = () => { SND.voices--; };
+  } catch (e) { /* 音が出なくても続行 */ }
+}
+const sfx = {
+  place: () => tone('sine', 440, 440, 40),
+  reserve: () => tone('triangle', 330, 220, 150),
+  warn: () => tone('triangle', 660, 660, 60),
+  interrupt: () => tone('triangle', 440, 880, 180),
+  burst: () => tone('triangle', 180, 90, 120),
+  reach: () => { tone('sine', 660, 660, 100); tone('sine', 880, 880, 100, 100); },
+  win: () => { tone('sine', 523, 523, 120); tone('sine', 659, 659, 120, 120); tone('sine', 784, 784, 120, 240); },
+};
+
+// ===== ゲーム状態 =====
+let G = null, gidSeq = 0, screen = 'start';
+let sel = null, kcur = { r: 7, c: 7 }, hover = null;
+const fxRings = []; // 演出だけ（状態ではない）
+
+function newGame() {
+  G = {
+    gid: ++gidSeq, rev: 0,
+    board: new Int8Array(N * N), mark: new Int8Array(N * N), // mark: 1=暴発 2=割り込み
+    turn: 1, mode: 'playing', paused: false, intBy: 0,
+    gauge: [0, 0, 0], armed: [false, false, false], reserve: [null, null, null], cool: [0, 0, 0],
+    t: 0, stones: [0, 0, 0], taps: [0, 0, 0], W: [0, 0, 0], I: [0, 0, 0], B: [0, 0, 0],
+    lastTap: [0, -1e9, -1e9], queue: [],
+    cpu: S.mode === 'cpu', speed: SPEED[S.diff] || 5,
+    cpuAcc: 0, cpuMoveT: 0, cpuIntT: 0, lastWarn: -1e9,
+    winner: 0, winLine: [], reachSeen: new Set(), last: -1,
+  };
+  sel = null; hover = null; kcur = { r: 7, c: 7 }; fxRings.length = 0;
+}
+const isHuman = c => !G.cpu || c === 1;
+const who = c => G.cpu ? (c === 1 ? 'あなた' : 'CPU') : COLOR_NAME[c];
+
+// 連打できるか（ゲージ以外の条件）
+const tapWindow = c => G.mode === 'playing' && !G.paused && G.turn === opp(c) && G.t >= G.cool[c];
+const canTap = c => tapWindow(c) && G.gauge[c] < FULL;
+
+// ===== 盤面ユーティリティ =====
+function runAt(b, r, c, color, dr, dc) {
+  const cells = [[r, c]];
+  let r1 = r + dr, c1 = c + dc;
+  while (inB(r1, c1) && b[idxOf(r1, c1)] === color) { cells.push([r1, c1]); r1 += dr; c1 += dc; }
+  const openA = inB(r1, c1) && b[idxOf(r1, c1)] === 0;
+  let r2 = r - dr, c2 = c - dc;
+  while (inB(r2, c2) && b[idxOf(r2, c2)] === color) { cells.unshift([r2, c2]); r2 -= dr; c2 -= dc; }
+  const openB = inB(r2, c2) && b[idxOf(r2, c2)] === 0;
+  return { len: cells.length, cells, open: (openA ? 1 : 0) + (openB ? 1 : 0) };
+}
+function winsAt(b, i, color) {
+  if (b[i]) return false;
+  const r = (i / N) | 0, c = i % N;
+  b[i] = color;
+  let w = false;
+  for (const [dr, dc] of DIRS) if (runAt(b, r, c, color, dr, dc).len >= 5) { w = true; break; }
+  b[i] = 0;
+  return w;
+}
+function maxRun(b, i, color) {
+  const r = (i / N) | 0, c = i % N;
+  b[i] = color;
+  let m = 0;
+  for (const [dr, dc] of DIRS) m = Math.max(m, runAt(b, r, c, color, dr, dc).len);
+  b[i] = 0;
+  return m;
+}
+function shapeScore(b, i, color) {
+  const r = (i / N) | 0, c = i % N;
+  b[i] = color;
+  let s = 0;
+  for (const [dr, dc] of DIRS) {
+    const { len, open } = runAt(b, r, c, color, dr, dc);
+    if (len >= 5) s += 1000000;
+    else if (open === 0) continue;
+    else if (len === 4) s += open === 2 ? 100000 : 20000;
+    else if (len === 3) s += open === 2 ? 8000 : 1000;
+    else if (len === 2) s += open === 2 ? 400 : 80;
+  }
+  b[i] = 0;
+  return s;
+}
+const empties = b => { const a = []; for (let i = 0; i < N * N; i++) if (!b[i]) a.push(i); return a; };
+
+// ===== CPUの打ち手 =====
+function cpuChoose(color, isInterrupt) {
+  const b = G.board;
+  if (isInterrupt && G.stones[1] === 0) {
+    for (const [r, c] of IDLE_SEQ) if (!b[idxOf(r, c)]) return idxOf(r, c);
+  }
+  const all = empties(b);
+  const wins = all.filter(i => winsAt(b, i, color));
+  const blocks = wins.length ? [] : all.filter(i => winsAt(b, i, opp(color)));
+  const cand = wins.length ? wins : blocks.length ? blocks : all;
+  let best = -1, bestV = -Infinity;
+  for (const i of cand) { // 行・列の小さい順に見るので、同点は先に見たほうが残る
+    const r = (i / N) | 0, c = i % N;
+    const v = shapeScore(b, i, color) + shapeScore(b, i, opp(color)) * 1.2 + (14 - Math.abs(c - 7) - Math.abs(r - 7));
+    if (v > bestV) { bestV = v; best = i; }
+  }
+  return best;
+}
+
+// ===== 暴発のランダム配置 =====
+function burstPick(color) {
+  const b = G.board;
+  let cand = empties(b);
+  const s1 = cand.filter(i => !winsAt(b, i, color)); if (s1.length) cand = s1;
+  const s2 = cand.filter(i => !winsAt(b, i, opp(color))); if (s2.length) cand = s2;
+  for (let k = cand.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [cand[k], cand[j]] = [cand[j], cand[k]]; }
+  const scored = cand.map(i => ({ i, m: maxRun(b, i, color) })).sort((x, y) => x.m - y.m);
+  const k = Math.max(1, Math.ceil(scored.length * 0.25));
+  return scored[Math.floor(Math.random() * k)].i;
+}
+
+// ===== 入力 → キュー =====
+function humanTap(c) {
+  if (!G || screen !== 'game' || !isHuman(c)) return;
+  const now = performance.now();
+  if (now - G.lastTap[c] < TAP_MS) return;      // 100msに1回まで（待ち行列にも入れない）
+  if (!canTap(c)) return;
+  G.lastTap[c] = now;
+  G.queue.push({ k: 'tap', c, gid: G.gid });
+  const btn = c === 1 ? els.bb : els.wb;
+  btn.classList.add('hit'); setTimeout(() => btn.classList.remove('hit'), 70);
+}
+function humanActor() {
+  if (!G || G.paused) return 0;
+  if (G.mode === 'interrupt') return isHuman(G.intBy) ? G.intBy : 0;
+  if (G.mode === 'playing') return isHuman(G.turn) ? G.turn : 0;
+  return 0;
+}
+function requestPlace(p) {
+  if (!G || screen !== 'game') return;
+  const a = humanActor();
+  if (!a) {
+    if (G.mode === 'over' || G.paused) return;
+    showMsg(G.mode === 'interrupt' ? 'CPUが割り込み中…' : (G.cpu ? 'いまはCPUの番。連打で邪魔しよう！' : 'いまは置けません'));
+    return;
+  }
+  const idx = p ? idxOf(p.r, p.c) : -1;
+  const randomMove = G.mode === 'playing' && G.reserve[a];
+  if (idx < 0 && !randomMove) return;
+  if (idx >= 0 && G.board[idx]) { showMsg('そこには置けません'); return; }
+  G.queue.push({ k: G.mode === 'interrupt' ? 'int' : 'move', c: a, idx, rev: G.rev, gid: G.gid });
+}
+
+// ===== 1フレームの処理 =====
+function step(dt) {
+  G.t += dt;
+  for (const c of [1, 2]) if (tapWindow(c)) G.W[c] += dt;
+  if (G.cpu) cpuStep(dt);
+  processQueue();
+  if (G.mode === 'playing' && (G.gauge[1] >= WARN_AT || G.gauge[2] >= WARN_AT) && G.t - G.lastWarn >= 1000) {
+    G.lastWarn = G.t; sfx.warn();
+  }
+}
+function cpuStep(dt) {
+  // 連打（黒の通常手番の間だけ。止まっていた分をまとめて打たない）
+  if (canTap(2)) {
+    const iv = 1000 / G.speed;
+    G.cpuAcc += dt;
+    if (G.cpuAcc >= iv) { G.cpuAcc = Math.min(G.cpuAcc - iv, iv); G.queue.push({ k: 'tap', c: 2, gid: G.gid }); }
+  } else G.cpuAcc = 0;
+  // 通常着手（白の手番開始から700ms）
+  if (G.mode === 'playing' && G.turn === 2) {
+    G.cpuMoveT += dt;
+    if (G.cpuMoveT >= CPU_MOVE_MS) {
+      G.cpuMoveT = -Infinity;
+      G.queue.push({ k: 'move', c: 2, idx: G.reserve[2] ? -1 : cpuChoose(2, false), rev: G.rev, gid: G.gid });
+    }
+  }
+  // 割り込み配置（250ms後）
+  if (G.mode === 'interrupt' && G.intBy === 2) {
+    G.cpuIntT += dt;
+    if (G.cpuIntT >= CPU_INT_MS) {
+      G.cpuIntT = -Infinity;
+      G.queue.push({ k: 'int', c: 2, idx: cpuChoose(2, true), rev: G.rev, gid: G.gid });
+    }
+  }
+}
+function processQueue() {
+  const q = G.queue.filter(e => e.gid === G.gid);
+  G.queue = [];
+  // 1) 連打 → 2) 暴発予約 → 3) 割り込み開始
+  for (const e of q) if (e.k === 'tap') applyTap(e.c);
+  // 4) 割り込み配置
+  for (const e of q) {
+    if (e.k === 'int' && G.mode === 'interrupt' && G.intBy === e.c && e.rev === G.rev && e.idx >= 0) {
+      if (place(e.c, e.idx, 'int')) break;
+    }
+  }
+  // 5) 通常着手（最初の有効な1件だけ）
+  for (const e of q) {
+    if (e.k === 'move' && G.mode === 'playing' && G.turn === e.c && e.rev === G.rev) {
+      if (normalMove(e.c, e.idx)) break;
+    }
+  }
+}
+function applyTap(c) {
+  if (!canTap(c)) return;
+  G.gauge[c]++; G.taps[c]++;
+  if (G.gauge[c] >= HALF && !G.armed[c]) {
+    G.armed[c] = true;
+    const tgt = G.turn;
+    if (!G.reserve[tgt]) {
+      G.reserve[tgt] = { by: c };
+      sfx.reserve();
+      showFx('暴発予約！<br><small style="font-size:.55em">' + who(tgt) + 'の次の石がランダムに！</small>', 'resv', 900);
+    }
+  }
+  if (G.gauge[c] >= FULL) startInterrupt(c);
+}
+function startInterrupt(c) {
+  G.mode = 'interrupt'; G.intBy = c; G.cpuIntT = 0; G.rev++;
+  clearSel();
+  sfx.interrupt();
+  showFx(who(c) === 'CPU' ? 'CPUの割り込み！' : who(c) + 'の割り込み！', 'int', 600);
+  shake('sh-l', 600);
+}
+function normalMove(c, idx) {
+  if (G.reserve[c]) { place(c, burstPick(c), 'burst'); return true; }
+  if (idx < 0) return false;
+  if (G.board[idx]) { if (isHuman(c)) showMsg('そこには置けません'); return false; }
+  return place(c, idx, 'normal');
+}
+// すべての着手が通る関数（途中で待たない）
+function place(c, idx, kind) {
+  const b = G.board;
+  if (b[idx]) return false;
+  b[idx] = c;
+  G.stones[c]++;
+  G.mark[idx] = kind === 'burst' ? 1 : kind === 'int' ? 2 : 0;
+  G.last = idx;
+  if (kind === 'burst') { G.B[G.reserve[c].by]++; G.reserve[c] = null; }
+  const r = (idx / N) | 0, col = idx % N;
+  const line = winLineAt(r, col, c);
+  let reach = false;
+  if (line) { G.mode = 'over'; G.winner = c; G.winLine = line; }
+  else if (G.stones[1] + G.stones[2] === N * N) { G.mode = 'over'; G.winner = 0; }
+  else reach = reachCheck(r, col, c);
+  if (kind === 'int') {
+    G.gauge[c] = 0; G.armed[c] = false; G.cool[c] = G.t + COOL_MS; G.I[c]++;
+    if (G.mode !== 'over') G.mode = 'playing';
+    G.intBy = 0; G.cpuMoveT = 0;
+  } else {
+    G.turn = opp(c); G.cpuMoveT = 0;
+  }
+  G.rev++;
+  clearSel();
+  // ここから演出
+  if (kind === 'burst') {
+    sfx.burst();
+    fxRings.push({ idx, until: performance.now() + 600 });
+    showFx('暴発！', 'burst', 600);
+    showMsg('暴発：つながりにくい場所へランダム配置');
+  } else sfx.place();
+  if (reach) {
+    sfx.reach();
+    showFx(COLOR_NAME[c] + ' リーチ！', 'reach', 900);
+    flash();
+  }
+  if (G.mode === 'over') gameOver();
+  return true;
+}
+function winLineAt(r, c, color) {
+  let cells = null;
+  for (const [dr, dc] of DIRS) {
+    const run = runAt(G.board, r, c, color, dr, dc);
+    if (run.len >= 5) cells = (cells || []).concat([run.cells]);
+  }
+  return cells;
+}
+function reachCheck(r, c, color) {
+  let fresh = false;
+  for (let d = 0; d < 4; d++) {
+    const [dr, dc] = DIRS[d];
+    const run = runAt(G.board, r, c, color, dr, dc);
+    if (run.len === 4 && run.open > 0) {
+      const a = run.cells[0], z = run.cells[3];
+      const id = color + ':' + d + ':' + a + ':' + z;
+      if (!G.reachSeen.has(id)) { G.reachSeen.add(id); fresh = true; }
+    }
+  }
+  return fresh;
+}
+
+// ===== 終局・診断 =====
+function diag(c) {
+  const C = G.taps[c], W = G.W[c] / 1000, I = G.I[c], B = G.B[c], Nn = G.stones[c];
+  const R = clamp01(C / (10 * Math.max(W, 1)));
+  const E = Math.min(C / 100, 1);
+  const Q = I / Math.max(Nn, 1);
+  const V = Math.min(B / 5, 1);
+  const pct = Math.max(0, Math.min(100, Math.round(100 * (0.5 * R + 0.2 * E + 0.2 * Q + 0.1 * V))));
+  const t = TITLES.find(x => pct < x[0]);
+  return { pct, title: t[1], one: t[2], C, W, I, B, N: Nn };
+}
+function gameOver() {
+  const gid = G.gid;
+  if (G.winner) sfx.win();
+  setTimeout(() => { if (G && G.gid === gid && screen === 'game') showResult(); }, 1100);
+}
+function showResult() {
+  const w = G.winner;
+  els.resTtl.textContent = !w ? '引き分け（盤が埋まった）' : G.cpu ? (w === 1 ? 'あなたの勝ち！' : 'CPUの勝ち…') : COLOR_NAME[w] + 'の勝ち！';
+  els.resSum.innerHTML = `<span>対局時間 <b>${fmtTime(G.t)}</b></span><span>総手数 <b>${G.stones[1] + G.stones[2]}</b></span>`;
+  els.resDiag.innerHTML = [1, 2].map(c => {
+    const d = diag(c);
+    const label = G.cpu ? (c === 1 ? '黒（あなた）' : `白（CPU・${DIFF_LABEL[S.diff]}）`) : COLOR_NAME[c];
+    return `<div class="dc"><div class="dh"><span class="dot c${c}"></span>${label}</div>
+      <div class="pct">${d.pct}<small>％ ドパガキ度</small></div>
+      <div class="ttl2">「${d.title}」</div><div class="one">${d.one}</div>
+      <dl><dt>有効連打</dt><dd>${d.C}回</dd><dt>連打できた時間</dt><dd>${d.W.toFixed(1)}秒</dd>
+      <dt>割り込み</dt><dd>${d.I}回</dd><dt>相手に起こした暴発</dt><dd>${d.B}回</dd><dt>置いた石</dt><dd>${d.N}個</dd></dl></div>`;
+  }).join('');
+  els.resultOv.hidden = false;
+  els.rematchBtn.focus();
+}
+
+// ===== 画面切り替え =====
+const els = {};
+['start', 'game', 'turnLbl', 'time', 'moves', 'diffLbl', 'bp', 'wp', 'resvBanner', 'bframe', 'board', 'fx', 'msg', 'flash',
+ 'zoom', 'selLbl', 'placeBtn', 'bb', 'wb', 'pauseBtn', 'againBtn', 'muteBtn', 'titleBtn', 'pauseOv', 'resumeBtn', 'pTitleBtn',
+ 'confirmOv', 'confirmYes', 'confirmNo', 'resultOv', 'resTtl', 'resSum', 'resDiag', 'rematchBtn', 'rTitleBtn', 'startBtn',
+ 'diffBox', 'optMute', 'optReduced'].forEach(id => { els[id] = document.getElementById(id); });
+
+function panelHTML(c) {
+  return `<div class="pname"><span class="dot c${c}"></span><span class="who"></span></div>
+    <div class="gauge" role="meter" aria-valuemin="0" aria-valuemax="20"><div class="fill"></div><i class="tk h"></i><i class="tk f"></i></div>
+    <div class="gnum"><span><span class="gv">0</span> / 20</span><span class="tag resv">次の石ランダム</span><span class="tag cool"></span></div>
+    <dl class="kv"><dt>石</dt><dd class="st">0</dd><dt>有効連打</dt><dd class="tp">0</dd><dt>割り込み</dt><dd class="it">0</dd></dl>`;
+}
+for (const [c, el] of [[1, els.bp], [2, els.wp]]) {
+  el.innerHTML = panelHTML(c);
+  el.q = {
+    who: el.querySelector('.who'), gauge: el.querySelector('.gauge'), fill: el.querySelector('.fill'),
+    gv: el.querySelector('.gv'), resv: el.querySelector('.resv'), cool: el.querySelector('.cool'),
+    st: el.querySelector('.st'), tp: el.querySelector('.tp'), it: el.querySelector('.it'),
+  };
+}
+for (const btn of [els.bb, els.wb]) {
+  btn.innerHTML = '<span class="lbl"></span><span class="key"></span><span class="why"></span>';
+  btn.q = { lbl: btn.querySelector('.lbl'), key: btn.querySelector('.key'), why: btn.querySelector('.why') };
+}
+
+function startGame() {
+  audioInit();
+  newGame();
+  screen = 'game';
+  els.start.hidden = true; els.game.hidden = false;
+  els.resultOv.hidden = true; els.pauseOv.hidden = true; els.confirmOv.hidden = true;
+  els.game.classList.toggle('cpu', G.cpu);
+  els.diffLbl.textContent = G.cpu ? 'CPU：' + DIFF_LABEL[S.diff] : '2人対戦';
+  els.bp.q.who.textContent = G.cpu ? '黒（あなた）' : '黒';
+  els.wp.q.who.textContent = G.cpu ? `白（CPU）` : '白';
+  els.bb.q.lbl.textContent = G.cpu ? '連打！' : '黒の連打！';
+  els.bb.q.key.textContent = 'PC：Aキー';
+  els.wb.q.lbl.textContent = G.cpu ? 'CPUの連打' : '白の連打！';
+  els.wb.q.key.textContent = G.cpu ? `${DIFF_LABEL[S.diff]}（${SPEED[S.diff]}回／秒）` : 'PC：Lキー';
+  els.wb.classList.toggle('cpu', G.cpu);
+  els.msg.textContent = ''; els.fx.innerHTML = '';
+  resizeBoard();
+  els.board.focus({ preventScroll: true });
+}
+function toTitle() {
+  screen = 'start'; G = null;
+  els.game.hidden = true; els.start.hidden = false;
+  els.resultOv.hidden = true; els.pauseOv.hidden = true; els.confirmOv.hidden = true;
+  syncStartForm();
+}
+function setPaused(v) {
+  if (!G || G.mode === 'over') return;
+  G.paused = v;
+  els.pauseOv.hidden = !v;
+  if (v) els.resumeBtn.focus(); else els.board.focus({ preventScroll: true });
+}
+function askRestart() {
+  if (!G) return;
+  if (G.mode === 'over') { startGame(); return; }
+  G.paused = true;
+  els.confirmOv.hidden = false;
+  els.confirmNo.focus();
+}
+
+// ===== 演出 =====
+let fxTimer = 0;
+function showFx(html, cls, ms) {
+  els.fx.innerHTML = `<span class="${cls}">${html}</span>`;
+  clearTimeout(fxTimer);
+  fxTimer = setTimeout(() => { els.fx.innerHTML = ''; }, ms);
+}
+let msgTimer = 0;
+function showMsg(t) {
+  els.msg.textContent = t;
+  clearTimeout(msgTimer);
+  msgTimer = setTimeout(() => { els.msg.textContent = ''; }, 1500);
+}
+let shakeUntil = 0;
+function shake(cls, ms) { if (!reduced()) shakeUntil = performance.now() + ms; }
+function flash() {
+  if (reduced()) return;
+  els.flash.classList.add('on');
+  setTimeout(() => els.flash.classList.remove('on'), 150);
+}
+function clearSel() { if (sel) kcur = sel; sel = null; }
+const fmtTime = ms => {
+  const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, ss = s % 60;
+  const p = n => String(n).padStart(2, '0');
+  return h ? `${p(h)}:${p(m)}:${p(ss)}` : `${p(m)}:${p(ss)}`;
+};
+
+// ===== 盤面の描画 =====
+const bctx = els.board.getContext('2d');
+let boardPx = 300, dpr = 1;
+function resizeBoard() {
+  const rect = els.board.getBoundingClientRect();
+  boardPx = Math.max(200, rect.width || 300);
+  dpr = Math.min(3, window.devicePixelRatio || 1);
+  els.board.width = Math.round(boardPx * dpr); els.board.height = Math.round(boardPx * dpr);
+}
+const geom = () => { const cell = boardPx / 15.5; return { cell, pad: cell * 0.75 }; };
+function pointFromEvent(e) {
+  const rect = els.board.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * boardPx / rect.width, y = (e.clientY - rect.top) * boardPx / rect.height;
+  const { cell, pad } = geom();
+  const c = Math.round((x - pad) / cell), r = Math.round((y - pad) / cell);
+  if (!inB(r, c)) return null; // 盤の外は端に吸着させない
+  return { r, c };
+}
+function drawStone(ctx, x, y, rad, color, alpha = 1) {
+  ctx.save(); ctx.globalAlpha = alpha;
+  const g = ctx.createRadialGradient(x - rad * 0.35, y - rad * 0.35, rad * 0.1, x, y, rad);
+  if (color === 1) { g.addColorStop(0, '#6a6a6a'); g.addColorStop(1, '#0c0c0c'); }
+  else { g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#cfcfcf'); }
+  ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+  if (color === 2) { ctx.strokeStyle = '#8c8c8c'; ctx.lineWidth = 1; ctx.stroke(); }
+  ctx.restore();
+}
+function previewPoint() { return hover || sel; }
+function render(now) {
+  if (screen !== 'game' || !G) return;
+  const ctx = bctx, s = boardPx, { cell, pad } = geom();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, s, s);
+  ctx.strokeStyle = '#5a3d17'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i < N; i++) {
+    const p = Math.round(pad + i * cell) + 0.5;
+    ctx.moveTo(pad, p); ctx.lineTo(pad + 14 * cell, p);
+    ctx.moveTo(p, pad); ctx.lineTo(p, pad + 14 * cell);
+  }
+  ctx.stroke();
+  ctx.fillStyle = '#5a3d17';
+  for (const [r, c] of [[3, 3], [3, 11], [7, 7], [11, 3], [11, 11]]) {
+    ctx.beginPath(); ctx.arc(pad + c * cell, pad + r * cell, Math.max(2, cell * 0.12), 0, Math.PI * 2); ctx.fill();
+  }
+  const rad = cell * 0.46;
+  for (let i = 0; i < N * N; i++) {
+    const v = G.board[i]; if (!v) continue;
+    const x = pad + (i % N) * cell, y = pad + ((i / N) | 0) * cell;
+    drawStone(ctx, x, y, rad, v);
+    if (G.mark[i]) {
+      ctx.fillStyle = G.mark[i] === 1 ? '#ff8a00' : '#ff3d8b';
+      ctx.beginPath(); ctx.arc(x, y, Math.max(2, cell * 0.13), 0, Math.PI * 2); ctx.fill();
+    }
+    if (i === G.last) {
+      ctx.strokeStyle = '#3de0ff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, rad + 1, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+  if (G.winLine.length) {
+    ctx.strokeStyle = 'rgba(255,61,139,.85)'; ctx.lineWidth = Math.max(4, cell * 0.22); ctx.lineCap = 'round';
+    for (const cells of G.winLine) {
+      const a = cells[0], z = cells[cells.length - 1];
+      ctx.beginPath(); ctx.moveTo(pad + a[1] * cell, pad + a[0] * cell); ctx.lineTo(pad + z[1] * cell, pad + z[0] * cell); ctx.stroke();
+    }
+  }
+  for (let k = fxRings.length - 1; k >= 0; k--) {
+    const f = fxRings[k], left = f.until - now;
+    if (left <= 0) { fxRings.splice(k, 1); continue; }
+    const p = 1 - left / 600;
+    ctx.strokeStyle = `rgba(255,138,0,${1 - p * 0.6})`; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(pad + (f.idx % N) * cell, pad + ((f.idx / N) | 0) * cell, rad + 2 + p * cell * 0.5, 0, Math.PI * 2); ctx.stroke();
+  }
+  const actor = humanActor(), pp = previewPoint();
+  if (actor && pp) {
+    const x = pad + pp.c * cell, y = pad + pp.r * cell;
+    const occupied = G.board[idxOf(pp.r, pp.c)];
+    const random = G.mode === 'playing' && G.reserve[actor];
+    if (!occupied) {
+      if (random) {
+        ctx.fillStyle = 'rgba(255,138,0,.9)'; ctx.font = `900 ${Math.round(cell * 0.7)}px sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('?', x, y + 1);
+      } else drawStone(ctx, x, y, rad, actor, 0.5);
+    }
+    ctx.strokeStyle = G.mode === 'interrupt' ? '#ff3d8b' : '#0a7fa0'; ctx.lineWidth = 2;
+    ctx.strokeRect(x - cell / 2 + 1, y - cell / 2 + 1, cell - 2, cell - 2);
+  }
+}
+const zctx = els.zoom.getContext('2d');
+function renderZoom() {
+  const z = 96, cz = 32;
+  zctx.clearRect(0, 0, z, z);
+  zctx.fillStyle = '#e3b866'; zctx.fillRect(0, 0, z, z);
+  const p = sel;
+  if (!G || !p) return;
+  zctx.strokeStyle = '#5a3d17'; zctx.lineWidth = 1.5;
+  for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+    const r = p.r + dr, c = p.c + dc;
+    const x = (dc + 1) * cz + cz / 2, y = (dr + 1) * cz + cz / 2;
+    if (!inB(r, c)) { zctx.fillStyle = 'rgba(30,30,60,.55)'; zctx.fillRect(x - cz / 2, y - cz / 2, cz, cz); continue; }
+    zctx.beginPath();
+    zctx.moveTo(c > 0 ? x - cz / 2 : x, y); zctx.lineTo(c < N - 1 ? x + cz / 2 : x, y);
+    zctx.moveTo(x, r > 0 ? y - cz / 2 : y); zctx.lineTo(x, r < N - 1 ? y + cz / 2 : y);
+    zctx.stroke();
+    const v = G.board[idxOf(r, c)];
+    if (v) drawStone(zctx, x, y, cz * 0.44, v);
+  }
+  const a = humanActor();
+  if (a && !G.board[idxOf(p.r, p.c)] && !(G.mode === 'playing' && G.reserve[a])) drawStone(zctx, z / 2, z / 2, cz * 0.44, a, 0.5);
+  zctx.strokeStyle = '#ff3d8b'; zctx.lineWidth = 3; zctx.strokeRect(cz + 1.5, cz + 1.5, cz - 3, cz - 3);
+}
+
+// ===== 表示の更新 =====
+const cache = new Map();
+function setText(el, v) { if (cache.get(el) !== v) { cache.set(el, v); el.textContent = v; } }
+function setHTML(el, v) { if (cache.get(el) !== v) { cache.set(el, v); el.innerHTML = v; } }
+function updateUI(now) {
+  if (screen !== 'game' || !G) return;
+  setText(els.time, fmtTime(G.t));
+  setText(els.moves, String(G.stones[1] + G.stones[2]));
+  // 手番表示
+  let tl, intCls = false;
+  if (G.mode === 'over') tl = !G.winner ? '引き分け' : (G.cpu ? (G.winner === 1 ? 'あなたの勝ち！' : 'CPUの勝ち…') : COLOR_NAME[G.winner] + 'の勝ち！');
+  else if (G.mode === 'interrupt') {
+    intCls = true;
+    tl = isHuman(G.intBy) ? `⚡ ${COLOR_NAME[G.intBy]}の割り込み！ 好きな場所に1個置こう` : '⚡ CPUの割り込み！';
+  } else if (G.cpu) tl = G.turn === 1 ? 'あなた（黒）の番：石を置こう' : 'CPU（白）の番… いまだ、連打！';
+  else tl = `${COLOR_NAME[G.turn]}の番：石を置こう ／ ${COLOR_NAME[opp(G.turn)]}は連打！`;
+  setHTML(els.turnLbl, `<span class="dot c${G.mode === 'interrupt' ? G.intBy : G.mode === 'over' ? (G.winner || 1) : G.turn}"></span>${tl}`);
+  els.turnLbl.classList.toggle('int', intCls);
+  // パネル
+  let warn = false;
+  for (const [c, el] of [[1, els.bp], [2, els.wp]]) {
+    const g = G.gauge[c], q = el.q;
+    q.fill.style.width = (g / FULL * 100) + '%';
+    q.gauge.className = 'gauge' + (g >= FULL ? ' g-full' : g >= WARN_AT ? ' g-danger' : g >= HALF ? ' g-warn' : '');
+    q.gauge.setAttribute('aria-valuenow', g);
+    if (g >= WARN_AT && G.mode === 'playing') warn = true;
+    setText(q.gv, String(g));
+    q.resv.classList.toggle('on', !!G.reserve[c]);
+    const cl = G.cool[c] - G.t;
+    q.cool.classList.toggle('on', cl > 0 && G.mode !== 'over');
+    if (cl > 0) setText(q.cool, `休止 ${(cl / 1000).toFixed(1)}秒`);
+    setText(q.st, String(G.stones[c])); setText(q.tp, String(G.taps[c])); setText(q.it, String(G.I[c]));
+    el.classList.toggle('turn', G.mode === 'playing' && G.turn === c);
+  }
+  // 暴発予約の常時表示
+  setHTML(els.resvBanner, [1, 2].filter(c => G.reserve[c]).map(c =>
+    `<div>⚠ ${COLOR_NAME[c]}${G.cpu ? (c === 1 ? '（あなた）' : '（CPU）') : ''}：暴発予約中・次の通常着手はランダム（選んだ場所には置かれません）</div>`).join(''));
+  // 揺れ
+  const big = now < shakeUntil, small = warn && !reduced();
+  els.bframe.className = 'bframe' + (big ? ' sh-l' : small ? ' sh-s' : '');
+  // 連打ボタン
+  for (const [c, btn] of [[1, els.bb], [2, els.wb]]) {
+    let why = '';
+    if (G.mode === 'over') why = '対局終了';
+    else if (G.paused) why = '一時停止中';
+    else if (G.mode === 'interrupt') why = '割り込み配置中';
+    else if (G.turn === c) why = '自分の番は連打できない';
+    else if (G.t < G.cool[c]) why = `休止中 ${((G.cool[c] - G.t) / 1000).toFixed(1)}秒`;
+    else why = G.cpu && c === 2 ? '連打中！' : 'いまだ！ 連打！';
+    setText(btn.q.why, why);
+    btn.classList.toggle('off', !canTap(c));
+  }
+  // 確定ボタン
+  const a = humanActor();
+  let lbl = 'ここに置く', cls = '', dis = true;
+  if (a) {
+    if (G.mode === 'interrupt') { lbl = '割り込みでここに置く'; cls = 'int'; dis = !sel || !!G.board[idxOf(sel.r, sel.c)]; }
+    else if (G.reserve[a]) { lbl = 'ランダムに置く'; cls = 'rand'; dis = false; }
+    else dis = !sel || !!G.board[idxOf(sel.r, sel.c)];
+  }
+  setText(els.placeBtn, lbl);
+  els.placeBtn.className = cls; els.placeBtn.disabled = dis;
+  setText(els.selLbl, sel ? `列${sel.c + 1}・行${sel.r + 1}${G.board[idxOf(sel.r, sel.c)] ? '（石あり）' : ''}` : (a ? '盤面をタップして場所を選ぶ' : '　'));
+  renderZoom();
+}
+
+// ===== メインループ =====
+let prevT = performance.now();
+function frame(now) {
+  const dt = Math.min(100, Math.max(0, now - prevT));
+  prevT = now;
+  try {
+    if (screen === 'game' && G && !G.paused && G.mode !== 'over') step(dt);
+    render(now);
+    updateUI(now);
+  } catch (e) { console.error(e); }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ===== 入力イベント =====
+let touchDrag = null;
+els.board.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'mouse') { if (e.button !== 0) return; return; }
+  e.preventDefault();
+  touchDrag = e.pointerId;
+  try { els.board.setPointerCapture(e.pointerId); } catch (_) { /* 無視 */ }
+  const p = pointFromEvent(e);
+  if (p) sel = p;
+});
+els.board.addEventListener('pointermove', e => {
+  if (e.pointerType === 'mouse') { hover = pointFromEvent(e); return; }
+  if (touchDrag !== e.pointerId) return;
+  const p = pointFromEvent(e);
+  if (p) sel = p;
+});
+els.board.addEventListener('pointerup', e => {
+  if (e.pointerType === 'mouse') {
+    if (e.button !== 0) return;
+    const p = pointFromEvent(e);
+    if (p) { sel = p; requestPlace(p); }
+    return;
+  }
+  if (touchDrag !== e.pointerId) return;
+  touchDrag = null;
+  if (S.touch === 'direct' && sel) requestPlace(sel);
+});
+els.board.addEventListener('pointercancel', () => { touchDrag = null; });
+els.board.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hover = null; });
+els.board.addEventListener('contextmenu', e => e.preventDefault());
+els.placeBtn.addEventListener('click', () => requestPlace(sel));
+
+for (const btn of [els.bb, els.wb]) {
+  const c = +btn.dataset.c;
+  btn.addEventListener('pointerdown', e => { e.preventDefault(); humanTap(c); });
+  btn.addEventListener('click', e => { if (e.detail === 0) humanTap(c); }); // キーボードで押したときだけ
+  btn.addEventListener('contextmenu', e => e.preventDefault());
+}
+
+document.addEventListener('keydown', e => {
+  if (screen !== 'game' || !G) return;
+  if (e.code === 'Escape') {
+    e.preventDefault();
+    if (!els.confirmOv.hidden) { els.confirmOv.hidden = true; G.paused = false; return; }
+    if (G.mode !== 'over' && els.resultOv.hidden) setPaused(!G.paused);
+    return;
+  }
+  if (e.target.closest && e.target.closest('input,select,textarea')) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.code === 'KeyA') { e.preventDefault(); if (!e.repeat) humanTap(1); return; }
+  if (e.code === 'KeyL') { e.preventDefault(); if (!e.repeat && !G.cpu) humanTap(2); return; }
+  if (e.code === 'KeyM') { e.preventDefault(); toggleMute(); return; }
+  if (!els.pauseOv.hidden || !els.confirmOv.hidden || !els.resultOv.hidden) return;
+  const mv = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
+  if (mv) {
+    e.preventDefault();
+    const base = sel || kcur;
+    sel = { r: Math.max(0, Math.min(N - 1, base.r + mv[0])), c: Math.max(0, Math.min(N - 1, base.c + mv[1])) };
+    hover = null;
+    return;
+  }
+  if (e.key === 'Enter' || e.key === ' ') {
+    if (document.activeElement && document.activeElement.tagName === 'BUTTON') return;
+    e.preventDefault();
+    if (!e.repeat) requestPlace(sel || kcur);
+  }
+});
+
+function toggleMute() {
+  S.mute = !S.mute; saveSettings();
+  els.optMute.checked = S.mute;
+  setText(els.muteBtn, S.mute ? '音：OFF（M）' : '音：ON（M）');
+}
+els.muteBtn.addEventListener('click', () => { audioInit(); toggleMute(); });
+els.pauseBtn.addEventListener('click', () => setPaused(true));
+els.resumeBtn.addEventListener('click', () => setPaused(false));
+els.againBtn.addEventListener('click', askRestart);
+els.confirmYes.addEventListener('click', startGame);
+els.confirmNo.addEventListener('click', () => { els.confirmOv.hidden = true; if (G) G.paused = false; });
+els.rematchBtn.addEventListener('click', startGame);
+els.titleBtn.addEventListener('click', () => { if (G && G.mode !== 'over') { G.paused = true; els.pauseOv.hidden = false; els.pTitleBtn.focus(); } else toTitle(); });
+els.pTitleBtn.addEventListener('click', toTitle);
+els.rTitleBtn.addEventListener('click', toTitle);
+els.startBtn.addEventListener('click', startGame);
+document.addEventListener('visibilitychange', () => { if (document.hidden && screen === 'game' && G && G.mode !== 'over' && !G.paused) setPaused(true); });
+window.addEventListener('resize', () => { if (screen === 'game') resizeBoard(); });
+if (window.ResizeObserver) new ResizeObserver(() => { if (screen === 'game') resizeBoard(); }).observe(els.board);
+
+// スタート画面のフォーム
+function syncStartForm() {
+  document.querySelectorAll('input[name=mode]').forEach(i => { i.checked = i.value === S.mode; });
+  document.querySelectorAll('input[name=diff]').forEach(i => { i.checked = i.value === S.diff; });
+  document.querySelectorAll('input[name=touch]').forEach(i => { i.checked = i.value === S.touch; });
+  els.optMute.checked = S.mute; els.optReduced.checked = S.reduced;
+  els.diffBox.style.display = S.mode === 'cpu' ? '' : 'none';
+  els.muteBtn.textContent = S.mute ? '音：OFF（M）' : '音：ON（M）';
+  document.body.classList.toggle('reduced', S.reduced);
+}
+document.querySelectorAll('input[name=mode],input[name=diff],input[name=touch]').forEach(i => i.addEventListener('change', () => {
+  if (i.checked) { S[i.name] = i.value; saveSettings(); syncStartForm(); }
+}));
+els.optMute.addEventListener('change', () => { S.mute = els.optMute.checked; saveSettings(); syncStartForm(); });
+els.optReduced.addEventListener('change', () => { S.reduced = els.optReduced.checked; saveSettings(); syncStartForm(); });
+syncStartForm();
+
+// テスト用（URLに ?debug を付けたときだけ）
+if (/[?&]debug\b/.test(location.search)) {
+  window.__dg = {
+    get G() { return G; }, get S() { return S; },
+    setBoard(list) { for (const [r, c, v] of list) G.board[idxOf(r, c)] = v; G.stones[1] = G.board.filter(v => v === 1).length; G.stones[2] = G.board.filter(v => v === 2).length; G.rev++; },
+    winsAt: (r, c, color) => winsAt(G.board, idxOf(r, c), color), cpuChoose, burstPick, diag, place,
+  };
+}
+})();
+</script>
+</body>
+</html>
