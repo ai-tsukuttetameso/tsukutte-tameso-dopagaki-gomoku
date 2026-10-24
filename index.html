@@ -60,7 +60,8 @@ footer{padding:12px 16px 20px;text-align:center;font-size:12px;color:var(--dim);
 
 /* 対局画面 */
 #game{display:grid;gap:10px 14px;grid-template-columns:minmax(150px,1fr) minmax(0,600px) minmax(150px,1fr);
-  grid-template-areas:"top top top" "bp board wp" "bb conf wb" "ctrl ctrl ctrl";align-items:start}
+  grid-template-rows:auto auto auto 1fr auto auto;
+  grid-template-areas:"top top top" "bp board wp" "bb board wb" ". board ." ". conf ." "ctrl ctrl ctrl";align-items:start}
 #game[hidden]{display:none}
 .top{grid-area:top;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;
   background:var(--card);border-radius:14px;padding:8px 14px}
@@ -96,7 +97,7 @@ footer{padding:12px 16px 20px;text-align:center;font-size:12px;color:var(--dim);
 .boardArea{grid-area:board;min-width:0}
 #resvBanner{min-height:0;margin-bottom:6px}
 #resvBanner div{background:var(--orange);color:#1a0d00;font-weight:900;border-radius:10px;padding:6px 10px;font-size:14px;margin-bottom:4px;text-align:center}
-.bwrap{position:relative;width:100%;max-width:600px;margin:0 auto;aspect-ratio:1/1}
+.bwrap{position:relative;width:100%;max-width:min(600px,calc(100vh - 150px));min-width:280px;margin:0 auto;aspect-ratio:1/1}
 .bframe{position:absolute;inset:0;border-radius:10px;background:linear-gradient(135deg,var(--wood),var(--wood2));
   box-shadow:0 0 0 5px #8a5a22,0 10px 24px rgba(0,0,0,.5)}
 .bframe.sh-s{animation:shakeS .12s infinite}
@@ -161,8 +162,9 @@ footer{padding:12px 16px 20px;text-align:center;font-size:12px;color:var(--dim);
 
 /* スマホ */
 @media (max-width:820px){
-  #game{grid-template-columns:1fr 1fr;gap:8px;
+  #game{grid-template-columns:1fr 1fr;gap:8px;grid-template-rows:none;
     grid-template-areas:"top top" "bp wp" "board board" "conf conf" "bb wb" "ctrl ctrl"}
+  .bwrap{max-width:600px;min-width:0}
   .pnl{padding:7px 9px;font-size:12px}
   .pname{font-size:14px;margin-bottom:4px}
   .gnum .gv{font-size:16px}
