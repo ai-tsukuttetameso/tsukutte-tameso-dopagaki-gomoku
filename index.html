@@ -61,7 +61,7 @@ footer{padding:12px 16px 20px;text-align:center;font-size:12px;color:var(--dim);
 /* 対局画面 */
 #game{display:grid;gap:10px 14px;grid-template-columns:minmax(150px,1fr) minmax(0,600px) minmax(150px,1fr);
   grid-template-rows:auto auto auto 1fr auto auto;
-  grid-template-areas:"top top top" "bp board wp" "bb board wb" ". board ." ". conf ." "ctrl ctrl ctrl";align-items:start}
+  grid-template-areas:"top top top" "bp board wp" "bb board wb" "coach board ." ". conf ." "ctrl ctrl ctrl";align-items:start}
 #game[hidden]{display:none}
 .top{grid-area:top;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;
   background:var(--card);border-radius:14px;padding:8px 14px}
@@ -137,6 +137,16 @@ footer{padding:12px 16px 20px;text-align:center;font-size:12px;color:var(--dim);
 .renda[data-c="2"].hit{box-shadow:0 2px 0 #0d6f87}
 .renda.cpu{cursor:default}
 
+#coach{grid-area:coach;display:none;position:relative;background:#fffbe6;color:#2a2340;border-radius:14px;padding:10px 34px 10px 12px;
+  font-size:14px;line-height:1.55;box-shadow:0 4px 14px rgba(0,0,0,.35);cursor:pointer}
+#game.easy #coach{display:block;visibility:hidden}
+#game.easy #coach.on{visibility:visible;animation:pop .2s ease-out}
+#coach::before{content:"";position:absolute;top:-8px;left:28px;border:8px solid transparent;border-top:0;border-bottom-color:#fffbe6}
+#coach b{color:#d81b60}
+#coach .clbl{display:block;font-size:11px;font-weight:900;color:#2e7d32}
+#coachClose{position:absolute;top:4px;right:4px;width:28px;height:28px;border:0;border-radius:50%;background:transparent;color:#2a2340;font-size:18px;line-height:1}
+.advice{background:#fffbe6;color:#2a2340;border-radius:12px;padding:10px 12px;margin:0 0 10px;font-size:14px;text-align:left;line-height:1.6}
+.advice b{color:#d81b60}
 .ctrl{grid-area:ctrl;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .ctrl button,.sbtn{border:1px solid rgba(255,255,255,.2);background:var(--bg2);border-radius:10px;padding:10px 14px;font-weight:700;font-size:14px}
 
@@ -165,7 +175,8 @@ footer{padding:12px 16px 20px;text-align:center;font-size:12px;color:var(--dim);
 /* スマホ */
 @media (max-width:820px){
   #game{grid-template-columns:1fr 1fr;gap:8px;grid-template-rows:none;
-    grid-template-areas:"top top" "bp wp" "board board" "conf conf" "bb wb" "ctrl ctrl"}
+    grid-template-areas:"top top" "bp wp" "board board" "coach coach" "conf conf" "bb wb" "ctrl ctrl"}
+  #game.easy #coach{min-height:64px}
   .bwrap{max-width:600px;min-width:0}
   .pnl{padding:7px 9px;font-size:12px}
   .pname{font-size:14px;margin-bottom:4px}
@@ -211,6 +222,7 @@ footer{padding:12px 16px 20px;text-align:center;font-size:12px;color:var(--dim);
     <div class="opt" id="diffBox">
       <h2>CPUの強さ＝連打の速さ</h2>
       <div class="seg" role="radiogroup" aria-label="CPUの強さ">
+        <label><input type="radio" name="diff" value="easy"><span>🔰 はじめて<small>解説つき・割り込みなし</small></span></label>
         <label><input type="radio" name="diff" value="slow"><span>のんびり<small>2回／秒</small></span></label>
         <label><input type="radio" name="diff" value="normal"><span>ふつう<small>5回／秒</small></span></label>
         <label><input type="radio" name="diff" value="fast"><span>脊髄反射<small>10回／秒</small></span></label>
@@ -230,7 +242,8 @@ footer{padding:12px 16px 20px;text-align:center;font-size:12px;color:var(--dim);
     <details class="settings">
       <summary>設定（音・演出・スマホの置き方）</summary>
       <div class="row"><label><input type="checkbox" id="optMute"> 音を消す</label>
-        <label><input type="checkbox" id="optReduced"> 演出を控えめにする（揺れ・発光なし）</label></div>
+        <label><input type="checkbox" id="optReduced"> 演出を控えめにする（揺れ・発光なし）</label>
+        <label><input type="checkbox" id="optCoach"> 解説オフ（「はじめて」の吹き出しを出さない）</label></div>
       <div class="row">スマホの置き方：
         <label><input type="radio" name="touch" value="confirm"> 選んでから「ここに置く」で確定</label>
         <label><input type="radio" name="touch" value="direct"> タップしたら即置く</label></div>
@@ -258,6 +271,7 @@ footer{padding:12px 16px 20px;text-align:center;font-size:12px;color:var(--dim);
       <div id="msg" aria-live="polite"></div>
     </div>
     <div class="pnl" id="wp"></div>
+    <div id="coach" role="status" aria-live="polite"><span class="clbl">🔰 解説</span><span id="coachText"></span><button id="coachClose" aria-label="解説を閉じる">×</button></div>
     <div id="conf">
       <canvas id="zoom" width="96" height="96" aria-hidden="true"></canvas>
       <div class="cbox">
@@ -271,6 +285,7 @@ footer{padding:12px 16px 20px;text-align:center;font-size:12px;color:var(--dim);
       <button id="pauseBtn">一時停止（Esc）</button>
       <button id="againBtn">最初からやり直す</button>
       <button id="muteBtn">音：ON（M）</button>
+      <button id="coachBtn" hidden>解説：ON</button>
       <button id="titleBtn">タイトルへ</button>
     </div>
   </section>
@@ -302,6 +317,7 @@ footer{padding:12px 16px 20px;text-align:center;font-size:12px;color:var(--dim);
   <div class="ovc">
     <h2 id="resTtl"></h2>
     <div class="res-sum" id="resSum"></div>
+    <p class="advice" id="resAdvice" hidden></p>
     <div class="diag" id="resDiag"></div>
     <p class="note">ドパガキ度は「連打の密度・累計回数・割り込み比率・暴発実績」から算出。ゲーム内の遊びの指標であり、性格や医療上の診断ではありません。</p>
     <div class="btns"><button class="pri" id="rematchBtn">同じ設定でもう一戦</button><button id="rTitleBtn">タイトルへ</button></div>
@@ -315,8 +331,22 @@ footer{padding:12px 16px 20px;text-align:center;font-size:12px;color:var(--dim);
 // ===== 定数 =====
 const N = 15, HALF = 10, FULL = 20;
 const TAP_MS = 100, COOL_MS = 3000, CPU_MOVE_MS = 700, CPU_INT_MS = 250, WARN_AT = 16;
-const SPEED = { slow: 2, normal: 5, fast: 10 };
-const DIFF_LABEL = { slow: 'のんびり', normal: 'ふつう', fast: '脊髄反射' };
+const SPEED = { easy: 0.5, slow: 2, normal: 5, fast: 10 };
+const DIFF_LABEL = { easy: 'はじめて', slow: 'のんびり', normal: 'ふつう', fast: '脊髄反射' };
+// はじめて（解説つき）：CPUは割り込みをせず、打つのも遅い。プレイヤーの連打は1回で2たまる
+const EASY_MOVE_MS = 1800, EASY_TAP_GAIN = 2;
+const COACH = {
+  start: '交互に石を打って、先に<b>5つ並べたら勝ち</b>！ あなたは黒。まず盤面をクリック（タップ）して1手打とう。',
+  cpuTurn: 'いまはCPUの番。<b>今のうちに「連打！」</b>（PCはAキー）！ 相手の番の間だけ、ゲージがたまるよ。',
+  half: 'ゲージ半分で<b>暴発予約</b>！ CPUの次の石が、つながりにくい場所へ勝手に置かれるよ。',
+  burstCpu: '<b>暴発成功！</b> CPUの石が狙いと違う場所に飛んだ（オレンジの点がついた石）。',
+  cpuResv: 'CPUの連打で<b>暴発予約</b>された！ あなたの次の石はランダムな場所に置かれちゃう…',
+  burstMe: 'あなたの石が<b>暴発</b>した…！ CPUの番に連打して、やり返そう。',
+  full: 'ゲージ満タン！ <b>割り込み</b>だ。CPUの番だけど、<b>好きな場所をクリック（タップ）</b>して石を1個置ける！',
+  afterInt: '割り込み成功！ 割り込んだ後は<b>3秒休み</b>で、ゲージは0から。CPUの番になったらまた連打！',
+  reachMe: '<b>リーチ！</b> 4つ並んだ。<b>あと1つで勝ち</b>！ 端に置こう。',
+  reachCpu: '<b>CPUがリーチ！</b> 4つ並んでる。<b>端に石を置いて止めないと負ける</b>よ！',
+};
 const DIRS = [[0, 1], [1, 0], [1, 1], [-1, 1]];
 const COLOR_NAME = ['', '黒', '白'];
 const IDLE_SEQ = [[7, 5], [7, 6], [7, 7], [7, 8], [7, 9]]; // 行8の列6〜10
@@ -335,7 +365,7 @@ const inB = (r, c) => r >= 0 && r < N && c >= 0 && c < N;
 const clamp01 = v => Math.max(0, Math.min(1, v));
 
 // ===== 設定 =====
-const S = { mode: 'cpu', diff: 'normal', touch: 'confirm', mute: false, reduced: false };
+const S = { mode: 'cpu', diff: 'normal', touch: 'confirm', mute: false, reduced: false, coach: true };
 try { Object.assign(S, JSON.parse(localStorage.getItem('dopagaki-gomoku') || '{}')); } catch (e) { /* 保存なしでも動く */ }
 const saveSettings = () => { try { localStorage.setItem('dopagaki-gomoku', JSON.stringify(S)); } catch (e) { /* 無視 */ } };
 const mqReduce = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
@@ -398,6 +428,7 @@ function newGame() {
     t: 0, stones: [0, 0, 0], taps: [0, 0, 0], W: [0, 0, 0], I: [0, 0, 0], B: [0, 0, 0],
     lastTap: [0, -1e9, -1e9], queue: [],
     cpu: S.mode === 'cpu', speed: SPEED[S.diff] || 5,
+    easy: S.mode === 'cpu' && S.diff === 'easy', coachSeen: new Set(), coachLog: [],
     cpuAcc: 0, cpuMoveT: 0, cpuIntT: 0, lastWarn: -1e9,
     winner: 0, winLine: [], reachSeen: new Set(), last: -1,
   };
@@ -474,6 +505,20 @@ function cpuChoose(color, isInterrupt) {
   return best;
 }
 
+// はじめて用：勝てる手は打つが、防御は6割だけ。あとは上位5手からランダム
+function cpuChooseEasy() {
+  const b = G.board, all = empties(b);
+  const win = all.find(i => winsAt(b, i, 2));
+  if (win !== undefined) return win;
+  const block = all.find(i => winsAt(b, i, 1));
+  if (block !== undefined && Math.random() < 0.6) return block;
+  const scored = all.map(i => {
+    const r = (i / N) | 0, c = i % N;
+    return { i, v: shapeScore(b, i, 2) * 0.8 + shapeScore(b, i, 1) * 0.5 + (14 - Math.abs(c - 7) - Math.abs(r - 7)) };
+  }).sort((x, y) => y.v - x.v);
+  return scored[Math.floor(Math.random() * Math.min(5, scored.length))].i;
+}
+
 // ===== 暴発のランダム配置 =====
 function burstPick(color) {
   const b = G.board;
@@ -538,9 +583,9 @@ function cpuStep(dt) {
   // 通常着手（白の手番開始から700ms）
   if (G.mode === 'playing' && G.turn === 2) {
     G.cpuMoveT += dt;
-    if (G.cpuMoveT >= CPU_MOVE_MS) {
+    if (G.cpuMoveT >= (G.easy ? EASY_MOVE_MS : CPU_MOVE_MS)) {
       G.cpuMoveT = -Infinity;
-      G.queue.push({ k: 'move', c: 2, idx: cpuChoose(2, false), rev: G.rev, gid: G.gid });
+      G.queue.push({ k: 'move', c: 2, idx: G.easy ? cpuChooseEasy() : cpuChoose(2, false), rev: G.rev, gid: G.gid });
     }
   }
   // 割り込み配置（250ms後）
@@ -572,7 +617,7 @@ function processQueue() {
 }
 function applyTap(c) {
   if (!canTap(c)) return;
-  G.gauge[c]++; G.taps[c]++;
+  G.gauge[c] = Math.min(FULL, G.gauge[c] + (G.easy && c === 1 ? EASY_TAP_GAIN : 1)); G.taps[c]++;
   if (G.gauge[c] >= HALF && !G.armed[c]) {
     G.armed[c] = true;
     const tgt = G.turn;
@@ -580,7 +625,10 @@ function applyTap(c) {
       G.reserve[tgt] = { by: c };
       sfx.reserve();
       showFx('暴発予約！<br><small style="font-size:.55em">' + who(tgt) + 'の次の石がランダムに！</small>', 'resv', 900);
+      coach(c === 1 ? 'half' : 'cpuResv');
     }
+    // はじめて：CPUは割り込みまでためず、暴発予約したらゲージを0に戻す
+    if (G.easy && c === 2) { G.gauge[2] = 0; G.armed[2] = false; }
   }
   if (G.gauge[c] >= FULL) startInterrupt(c);
 }
@@ -591,6 +639,7 @@ function startInterrupt(c) {
   const n = G.I[1] + G.I[2] + 1;
   showFx(`${who(c)}の割り込み！<br><small style="font-size:.5em">本局${n}回目${n >= 3 ? '…まだ来る！' : ''}</small>`, 'int', 800);
   shake('sh-l', 600);
+  if (c === 1) coach('full');
 }
 function normalMove(c, idx) {
   if (G.reserve[c]) { place(c, burstPick(c), 'burst', idx); return true; }
@@ -632,11 +681,16 @@ function place(c, idx, kind, intended = -1) {
       showFx('暴発！<br><small style="font-size:.5em">そこじゃない！</small>', 'burst', 900);
     } else showFx('暴発！', 'burst', 600);
     showMsg('暴発：つながりにくい場所へランダム配置');
+    coach(c === 2 ? 'burstCpu' : 'burstMe');
   } else sfx.place();
   if (reach) {
     sfx.reach();
     showFx(COLOR_NAME[c] + ' リーチ！', 'reach', 900);
     flash();
+    coach(c === 1 ? 'reachMe' : 'reachCpu');
+  } else if (G.mode === 'playing') {
+    if (kind === 'int' && c === 1) coach('afterInt');
+    else if (G.turn === 2 && kind !== 'int') coach('cpuTurn');
   }
   if (G.mode === 'over') gameOver();
   return true;
@@ -692,6 +746,8 @@ function showResult() {
       <dl><dt>有効連打</dt><dd>${d.C}回</dd><dt>連打できた時間</dt><dd>${d.W.toFixed(1)}秒</dd>
       <dt>割り込み</dt><dd>${d.I}回</dd><dt>相手に起こした暴発</dt><dd>${d.B}回</dd><dt>置いた石</dt><dd>${d.N}個</dd></dl></div>`;
   }).join('');
+  els.resAdvice.innerHTML = G.easy ? '🔰 ' + advice() : '';
+  els.resAdvice.hidden = !G.easy;
   els.resultOv.hidden = false;
   syncInert();
   els.rematchBtn.focus();
@@ -702,7 +758,7 @@ const els = {};
 ['start', 'game', 'turnLbl', 'time', 'moves', 'diffLbl', 'bp', 'wp', 'resvBanner', 'bframe', 'board', 'fx', 'msg', 'flash',
  'zoom', 'selLbl', 'placeBtn', 'bb', 'wb', 'pauseBtn', 'againBtn', 'muteBtn', 'titleBtn', 'pauseOv', 'resumeBtn', 'pTitleBtn',
  'confirmOv', 'confirmYes', 'confirmNo', 'resultOv', 'resTtl', 'resSum', 'resDiag', 'rematchBtn', 'rTitleBtn', 'startBtn',
- 'diffBox', 'optMute', 'optReduced'].forEach(id => { els[id] = document.getElementById(id); });
+ 'diffBox', 'optMute', 'optReduced', 'optCoach', 'coach', 'coachText', 'coachClose', 'coachBtn', 'resAdvice'].forEach(id => { els[id] = document.getElementById(id); });
 
 function panelHTML(c) {
   return `<div class="pname"><span class="dot c${c}"></span><span class="who"></span></div>
@@ -739,13 +795,18 @@ function startGame() {
   els.bb.q.key.textContent = 'PC：Aキー';
   els.wb.q.lbl.textContent = G.cpu ? 'CPUの連打' : '白の連打！';
   els.wb.q.key.textContent = G.cpu ? `${DIFF_LABEL[S.diff]}（${SPEED[S.diff]}回／秒）` : 'PC：Lキー';
+  els.game.classList.toggle('easy', G.easy);
+  els.coachBtn.hidden = !G.easy;
+  syncCoachBtn();
+  hideCoach();
+  coach('start');
   els.wb.classList.toggle('cpu', G.cpu);
   els.msg.textContent = ''; els.fx.innerHTML = '';
   resizeBoard();
   els.board.focus({ preventScroll: true });
 }
 function toTitle() {
-  screen = 'start'; G = null;
+  screen = 'start'; G = null; hideCoach();
   els.game.hidden = true; els.start.hidden = false;
   els.resultOv.hidden = true; els.pauseOv.hidden = true; els.confirmOv.hidden = true;
   syncInert();
@@ -784,6 +845,27 @@ function closeConfirm() {
   if (G) G.paused = !!G.prePaused;
   syncInert();
   if (G && G.paused) els.resumeBtn.focus(); else els.board.focus({ preventScroll: true });
+}
+
+// ===== 解説（はじめてモードだけ。同じ説明は1対局に1回） =====
+let coachTimer = 0;
+function coach(key) {
+  if (!G || !G.easy || !S.coach || G.coachSeen.has(key)) return;
+  G.coachSeen.add(key); G.coachLog.push(key);
+  els.coachText.innerHTML = COACH[key];
+  els.coach.classList.add('on');
+  clearTimeout(coachTimer);
+  const ms = Math.max(5000, els.coachText.textContent.length * 120);
+  coachTimer = setTimeout(hideCoach, ms);
+}
+function hideCoach() { clearTimeout(coachTimer); els.coach.classList.remove('on'); }
+function advice() {
+  const won = G.winner === 1;
+  if (G.taps[1] === 0) return '次は<b>CPUの番に「連打！」</b>を押してみよう。ゲージがたまると暴発や割り込みができるよ。';
+  if (G.I[1] === 0) return 'あと少し！ CPUの番に<b>もっと速く連打</b>して、ゲージ満タンの<b>割り込み</b>を決めよう。';
+  if (!won) return 'CPUの4つ並びに注意！ <b>リーチが出たら端をふさごう</b>。割り込みで止めるのもアリ。';
+  if (G.B[1] === 0) return '勝利！ 次はゲージ半分の<b>暴発</b>で、CPUの石を飛ばしてみよう。';
+  return '暴発も割り込みも使いこなした！ 次は<b>「のんびり」</b>に挑戦しよう。';
 }
 
 // ===== 演出 =====
@@ -1128,7 +1210,7 @@ function syncStartForm() {
   document.querySelectorAll('input[name=mode]').forEach(i => { i.checked = i.value === S.mode; });
   document.querySelectorAll('input[name=diff]').forEach(i => { i.checked = i.value === S.diff; });
   document.querySelectorAll('input[name=touch]').forEach(i => { i.checked = i.value === S.touch; });
-  els.optMute.checked = S.mute; els.optReduced.checked = S.reduced;
+  els.optMute.checked = S.mute; els.optReduced.checked = S.reduced; els.optCoach.checked = !S.coach;
   els.diffBox.style.display = S.mode === 'cpu' ? '' : 'none';
   els.muteBtn.textContent = S.mute ? '音：OFF（M）' : '音：ON（M）';
   document.body.classList.toggle('reduced', S.reduced);
@@ -1138,6 +1220,11 @@ document.querySelectorAll('input[name=mode],input[name=diff],input[name=touch]')
 }));
 els.optMute.addEventListener('change', () => { S.mute = els.optMute.checked; saveSettings(); syncStartForm(); });
 els.optReduced.addEventListener('change', () => { S.reduced = els.optReduced.checked; saveSettings(); syncStartForm(); });
+els.optCoach.addEventListener('change', () => { S.coach = !els.optCoach.checked; saveSettings(); syncStartForm(); });
+function syncCoachBtn() { els.coachBtn.textContent = S.coach ? '解説：ON' : '解説：OFF'; }
+els.coachBtn.addEventListener('click', () => { S.coach = !S.coach; saveSettings(); syncCoachBtn(); if (!S.coach) hideCoach(); });
+els.coachClose.addEventListener('click', hideCoach);
+els.coach.addEventListener('click', e => { if (e.target === els.coach || e.target === els.coachText) hideCoach(); });
 syncStartForm();
 
 // テスト用（URLに ?debug を付けたときだけ）
